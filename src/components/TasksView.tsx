@@ -23,6 +23,7 @@ import { useTaskContext } from '../context/TaskContext';
 import { Task, EnergyLevel, GTDContext, Blocker, RecurrenceInterval } from '../types/task';
 import { generateId } from '../utils/storage';
 import { CustomSelect, SelectOption } from './CustomSelect';
+import { InboxRefinery } from './InboxRefinery';
 
 const GTD_CONTEXT_OPTIONS: SelectOption[] = [
   { value: '@computer', label: '@computer', icon: <span>💻</span> },
@@ -50,9 +51,11 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
     addQuickTask, 
     createOrUpdateTask, 
     deleteTask,
-    startTaskDirectly 
+    startTaskDirectly,
+    moveToInbox
   } = useTaskContext();
 
+  const [isRefining, setIsRefining] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [activeTab, setActiveTab] = useState<'inbox' | 'in_progress' | 'ready' | 'blocked' | 'done' | 'all'>('inbox');
   const [clarifyingTaskId, setClarifyingTaskId] = useState<string | null>(null);
@@ -157,6 +160,15 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
     if (activeTab === 'done') return t.status === 'completed';
     return true; // all
   });
+
+  if (isRefining) {
+    return (
+      <InboxRefinery
+        onClose={() => setIsRefining(false)}
+        onStartFocus={onSelectTaskForFocus}
+      />
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto py-8 px-4 animate-fade-in">
@@ -281,6 +293,26 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
         </button>
       </div>
 
+      {/* Refine Inbox Banner */}
+      {activeTab === 'inbox' && inboxCount > 0 && (
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-indigo-950/25 border border-indigo-800/40 mb-4 animate-fade-in shadow-sm">
+          <div className="flex items-center gap-2 text-xs text-indigo-300">
+            <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
+            <span>
+              <b>{inboxCount}</b> raw {inboxCount === 1 ? 'thought' : 'thoughts'} waiting to be clarified
+            </span>
+          </div>
+
+          <button
+            onClick={() => setIsRefining(true)}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5 active:scale-95 shrink-0"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Refine Inbox ✨</span>
+          </button>
+        </div>
+      )}
+
       {/* 3. Task Cards List */}
       <div className="space-y-3">
         {filteredTasks.length === 0 ? (
@@ -383,6 +415,17 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                       <span>GTD</span>
                       {isClarifying ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                     </button>
+
+                    {/* Move back to Inbox button */}
+                    {task.status !== 'inbox' && task.status !== 'completed' && (
+                      <button
+                        onClick={() => moveToInbox(task.id)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-amber-300 hover:bg-amber-950/30 transition"
+                        title="Move back to Inbox"
+                      >
+                        <Inbox className="w-4 h-4" />
+                      </button>
+                    )}
 
                     <button
                       onClick={() => deleteTask(task.id)}
@@ -553,14 +596,28 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                     </div>
 
                     {/* Clarifier Actions */}
-                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                      <button
-                        type="button"
-                        onClick={() => saveGtdDetails(task, false)}
-                        className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition"
-                      >
-                        Save Draft
-                      </button>
+                    <div className="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => saveGtdDetails(task, false)}
+                          className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition"
+                        >
+                          Save Draft
+                        </button>
+
+                        {task.status !== 'inbox' && (
+                          <button
+                            type="button"
+                            onClick={() => moveToInbox(task.id)}
+                            className="px-3 py-2 rounded-xl bg-amber-950/30 hover:bg-amber-900/40 text-amber-300 border border-amber-800/50 text-xs font-medium transition flex items-center gap-1.5"
+                            title="Move back to Inbox"
+                          >
+                            <Inbox className="w-3.5 h-3.5" />
+                            <span>To Inbox</span>
+                          </button>
+                        )}
+                      </div>
 
                       <div className="flex items-center gap-2">
                         <button

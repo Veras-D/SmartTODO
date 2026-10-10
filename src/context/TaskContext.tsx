@@ -26,6 +26,7 @@ interface TaskContextType {
   continueTaskLater: (taskId?: string) => void;
   resumeTask: (taskId: string) => void;
   moveToReadyPool: (taskId: string) => void;
+  moveToInbox: (taskId: string) => void;
   completeActiveTask: () => void;
   handleCantDo: (reason: 'too_tired' | 'blocked' | 'not_now' | 'cold_storage', blockerText?: string) => void;
   activateFrictionBuster: () => void;
@@ -221,6 +222,20 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
         return { ...t, status: 'ready' as TaskStatus };
+      }
+      return t;
+    }));
+    if (activeTaskId === taskId) {
+      setActiveTaskId(null);
+    }
+  }, [activeTaskId]);
+
+  // Move task back to Inbox
+  const moveToInbox = useCallback((taskId: string) => {
+    soundManager.playSkipSound();
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        return { ...t, status: 'inbox' as TaskStatus };
       }
       return t;
     }));
@@ -475,6 +490,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         continueTaskLater,
         resumeTask,
         moveToReadyPool,
+        moveToInbox,
         completeActiveTask,
         handleCantDo,
         activateFrictionBuster,

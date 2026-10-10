@@ -40,7 +40,8 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
     addQuickTask,
     createOrUpdateTask,
     tasks,
-    startTaskDirectly
+    startTaskDirectly,
+    moveToInbox
   } = useTaskContext();
 
   const inboxTasks = tasks.filter(t => t.status === 'inbox');
@@ -164,6 +165,14 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                         title="Move back to Ready Roulette pool"
                       >
                         <Dices className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={() => moveToInbox(task.id)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-amber-300 hover:bg-amber-950/30 transition text-[11px]"
+                        title="Move back to Inbox"
+                      >
+                        <Inbox className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -451,6 +460,19 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                   >
                     <span>⏭️ Just skip for today</span>
                   </button>
+
+                  {activeTask && (
+                    <button
+                      onClick={() => {
+                        moveToInbox(activeTask.id);
+                        setShowSkipOptions(false);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-amber-950/40 text-slate-300 hover:text-amber-300 text-xs font-medium border border-slate-700 transition flex items-center gap-1.5"
+                    >
+                      <Inbox className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Send back to Inbox</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Inline Blocker input if clicked */}

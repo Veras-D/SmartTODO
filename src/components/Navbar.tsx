@@ -30,6 +30,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     toggleSound, 
     completedTodayCount, 
     unblockedReadyTasks,
+    inProgressTasks,
     tasks
   } = useTaskContext();
 
@@ -88,6 +89,13 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Dices className="w-3.5 h-3.5" />
             <span>Focus</span>
+            {inProgressTasks.length > 0 && (
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                currentTab === 'focus' ? 'bg-indigo-900/90 text-white' : 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/40'
+              }`}>
+                {inProgressTasks.length}
+              </span>
+            )}
           </button>
 
           <button

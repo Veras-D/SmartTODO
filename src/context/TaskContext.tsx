@@ -23,6 +23,9 @@ interface TaskContextType {
   // Actions
   rollRandomTask: () => void;
   startTaskDirectly: (taskId: string) => void;
+  continueTaskLater: (taskId?: string) => void;
+  resumeTask: (taskId: string) => void;
+  moveToReadyPool: (taskId: string) => void;
   completeActiveTask: () => void;
   handleCantDo: (reason: 'too_tired' | 'blocked' | 'not_now' | 'cold_storage', blockerText?: string) => void;
   activateFrictionBuster: () => void;
@@ -35,6 +38,7 @@ interface TaskContextType {
   
   // Filtered queries
   unblockedReadyTasks: Task[];
+  inProgressTasks: Task[];
   inboxTasks: Task[];
   completedTodayCount: number;
   coldStorageTasks: Task[];
@@ -68,8 +72,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const unblockedReadyTasks = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     return tasks.filter(t => {
-      // Must be ready or in_progress status
-      if (t.status !== 'ready' && t.status !== 'in_progress') return false;
+      // Must be ready status (in-progress tasks live in the dedicated Continue Later tray)
+      if (t.status !== 'ready') return false;
 
       // Must NOT be snoozed for today
       if (t.snoozedUntil && t.snoozedUntil.startsWith(today)) return false;
@@ -83,6 +87,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return true;
     });
+  }, [tasks]);
+
+  // Tasks currently in progress or paused to continue later
+  const inProgressTasks = useMemo(() => {
+    return tasks.filter(t => t.status === 'in_progress');
   }, [tasks]);
 
   // Tasks in inbox waiting for GTD clarification
@@ -162,11 +171,63 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, 90);
   }, [getEligibleRollPool, activeTaskId]);
 
-  // Start a specific task directly (from Inbox or Task list)
+  // Start a specific task directly (from Inbox, Ready deck, or Continue Later)
   const startTaskDirectly = useCallback((taskId: string) => {
+    // If another task was active, save it in in_progress so it is never lost or forgotten
+    if (activeTaskId && activeTaskId !== taskId) {
+      setTasks(prev => prev.map(t => {
+        if (t.id === activeTaskId && t.status !== 'completed') {
+          return { ...t, status: 'in_progress' as TaskStatus };
+        }
+        return t;
+      }));
+    }
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        return { ...t, status: 'in_progress' as TaskStatus };
+      }
+      return t;
+    }));
     setActiveTaskId(taskId);
     soundManager.playLandSound();
-  }, []);
+  }, [activeTaskId]);
+
+  // Pause active task or specific task to continue later
+  const continueTaskLater = useCallback((taskId?: string) => {
+    const targetId = taskId || activeTaskId;
+    if (!targetId) return;
+    soundManager.playSkipSound();
+    setTasks(prev => prev.map(t => {
+      if (t.id === targetId) {
+        return {
+          ...t,
+          status: 'in_progress' as TaskStatus
+        };
+      }
+      return t;
+    }));
+    if (activeTaskId === targetId) {
+      setActiveTaskId(null);
+    }
+  }, [activeTaskId]);
+
+  // Resume a task that was paused to continue later
+  const resumeTask = useCallback((taskId: string) => {
+    startTaskDirectly(taskId);
+  }, [startTaskDirectly]);
+
+  // Move task back to the Ready roulette pool
+  const moveToReadyPool = useCallback((taskId: string) => {
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        return { ...t, status: 'ready' as TaskStatus };
+      }
+      return t;
+    }));
+    if (activeTaskId === taskId) {
+      setActiveTaskId(null);
+    }
+  }, [activeTaskId]);
 
   // Complete Active Task
   const completeActiveTask = useCallback(() => {
@@ -411,6 +472,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isRolling,
         rollRandomTask,
         startTaskDirectly,
+        continueTaskLater,
+        resumeTask,
+        moveToReadyPool,
         completeActiveTask,
         handleCantDo,
         activateFrictionBuster,
@@ -421,6 +485,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         restoreFromColdStorage,
         declareBankruptcy,
         unblockedReadyTasks,
+        inProgressTasks,
         inboxTasks,
         completedTodayCount,
         coldStorageTasks

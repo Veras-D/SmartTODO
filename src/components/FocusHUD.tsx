@@ -11,7 +11,8 @@ import {
   Plus,
   Repeat,
   Inbox,
-  Play
+  Play,
+  Clock
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { PomodoroTimer } from './PomodoroTimer';
@@ -25,11 +26,15 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
     activeTask, 
     rollRandomTask, 
     completeActiveTask, 
+    continueTaskLater,
+    resumeTask,
+    moveToReadyPool,
     handleCantDo,
     activateFrictionBuster,
     toggleMicroStep, 
     isRolling, 
     unblockedReadyTasks, 
+    inProgressTasks,
     filter, 
     setFilter,
     addQuickTask,
@@ -106,15 +111,80 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
       {!activeTask ? (
         <div className="w-full flex flex-col items-center text-center animate-fade-in">
           
+          {/* 📌 Continue Later (In Progress) Shelf */}
+          {inProgressTasks.length > 0 && (
+            <div className="w-full max-w-md mb-8 p-4 rounded-3xl bg-indigo-950/25 border border-indigo-800/40 shadow-xl text-left animate-fade-in">
+              <div className="flex items-center justify-between mb-3 px-1">
+                <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Continue Later ({inProgressTasks.length})</span>
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  Paused & ready to resume
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {inProgressTasks.map(task => (
+                  <div
+                    key={task.id}
+                    className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-900 border border-slate-800/90 hover:border-indigo-500/40 transition shadow-sm"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                        {task.gtdContext && (
+                          <span className="text-[10px] text-indigo-300 bg-indigo-950/60 px-1.5 py-0.2 rounded border border-indigo-800/40">
+                            {task.gtdContext}
+                          </span>
+                        )}
+                        {task.estimatedMinutes && (
+                          <span className="text-[10px] text-slate-400">
+                            ~{task.estimatedMinutes}m
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="text-xs font-semibold text-white truncate">
+                        {task.title}
+                      </h4>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => resumeTask(task.id)}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition active:scale-95"
+                        title="Resume this task now"
+                      >
+                        <Play className="w-3 h-3 fill-white" />
+                        <span>Resume</span>
+                      </button>
+
+                      <button
+                        onClick={() => moveToReadyPool(task.id)}
+                        className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-300 hover:bg-indigo-950/30 transition text-[11px]"
+                        title="Move back to Ready Roulette pool"
+                      >
+                        <Dices className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {unblockedReadyTasks.length === 0 ? (
             /* Clean Empty State: Add task to Inbox or start directly */
             <div className="w-full max-w-md p-8 rounded-3xl bg-slate-900 border border-slate-800 text-center shadow-xl">
               <div className="w-14 h-14 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4">
                 <Dices className="w-7 h-7" />
               </div>
-              <h2 className="text-lg font-bold text-white mb-1">Your Focus Deck is Empty</h2>
+              <h2 className="text-lg font-bold text-white mb-1">
+                {inProgressTasks.length > 0 ? 'Start Another Task' : 'Your Focus Deck is Empty'}
+              </h2>
               <p className="text-xs text-slate-400 mb-5">
-                Capture a task to send to your Inbox, or start focusing right away.
+                {inProgressTasks.length > 0 
+                  ? 'Capture a new thought or start another focus session.' 
+                  : 'Capture a task to send to your Inbox, or start focusing right away.'}
               </p>
 
               <form onSubmit={handleAddToInbox} className="space-y-3">
@@ -290,25 +360,36 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
               </p>
             )}
 
-            {/* Action Buttons: Just Done & Can't do it now */}
-            <div className="flex items-center gap-3 pt-4 border-t border-slate-800/80">
+            {/* Action Buttons: Done, Continue Later, Can't do it now */}
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 pt-4 border-t border-slate-800/80">
               
               {/* Primary Complete Button */}
               <button
                 onClick={completeActiveTask}
-                className="flex-1 py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition"
+                className="flex-1 py-3 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Done!</span>
               </button>
 
+              {/* Continue Later Button */}
+              <button
+                onClick={() => continueTaskLater(activeTask.id)}
+                className="py-3 px-4 rounded-2xl bg-indigo-600/20 hover:bg-indigo-600/30 active:scale-95 text-indigo-300 font-semibold text-xs border border-indigo-500/40 flex items-center gap-1.5 transition"
+                title="Pause this task to continue later"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Continue Later</span>
+              </button>
+
               {/* Can't do it now / Skip */}
               <button
                 onClick={() => setShowSkipOptions(prev => !prev)}
-                className="py-3.5 px-5 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-medium text-xs border border-slate-700 flex items-center gap-1.5 transition"
+                className="py-3 px-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-400 font-medium text-xs border border-slate-700 flex items-center gap-1.5 transition"
+                title="Skip or park task"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>Can&rsquo;t do it now</span>
+                <span>Skip</span>
               </button>
 
               {/* Tiny Friction Buster button */}
@@ -316,13 +397,31 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                 <button
                   onClick={activateFrictionBuster}
                   title="Make this task smaller (2-min start)"
-                  className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-emerald-300 border border-slate-700 transition"
+                  className="p-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-emerald-300 border border-slate-700 transition shrink-0"
                 >
                   <Scissors className="w-4 h-4" />
                 </button>
               )}
 
             </div>
+
+            {/* Notification of other paused tasks so user never forgets */}
+            {inProgressTasks.filter(t => t.id !== activeTask.id).length > 0 && (
+              <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
+                <span className="flex items-center gap-1.5 text-indigo-300 text-[11px]">
+                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>
+                    {inProgressTasks.filter(t => t.id !== activeTask.id).length} other {inProgressTasks.filter(t => t.id !== activeTask.id).length === 1 ? 'task' : 'tasks'} waiting in Continue Later
+                  </span>
+                </span>
+                <button
+                  onClick={() => continueTaskLater(activeTask.id)}
+                  className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium hover:underline"
+                >
+                  Switch tasks ⇄
+                </button>
+              </div>
+            )}
 
             {/* Quick Minimal Inline Skip Reason Chips */}
             {showSkipOptions && (

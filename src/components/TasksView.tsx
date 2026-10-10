@@ -54,7 +54,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
   } = useTaskContext();
 
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [activeTab, setActiveTab] = useState<'inbox' | 'ready' | 'blocked' | 'done' | 'all'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'in_progress' | 'ready' | 'blocked' | 'done' | 'all'>('inbox');
   const [clarifyingTaskId, setClarifyingTaskId] = useState<string | null>(null);
 
   // GTD Edit Form States
@@ -144,12 +144,14 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
   };
 
   const inboxCount = tasks.filter(t => t.status === 'inbox').length;
+  const inProgressCount = tasks.filter(t => t.status === 'in_progress').length;
   const readyCount = tasks.filter(t => t.status === 'ready').length;
   const blockedCount = tasks.filter(t => t.status === 'blocked').length;
   const doneCount = tasks.filter(t => t.status === 'completed').length;
 
   const filteredTasks = tasks.filter(t => {
     if (activeTab === 'inbox') return t.status === 'inbox';
+    if (activeTab === 'in_progress') return t.status === 'in_progress';
     if (activeTab === 'ready') return t.status === 'ready';
     if (activeTab === 'blocked') return t.status === 'blocked' || t.blockers.some(b => !b.resolved);
     if (activeTab === 'done') return t.status === 'completed';
@@ -196,6 +198,23 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
           {inboxCount > 0 && (
             <span className="text-[10px] bg-indigo-900/80 px-1.5 py-0.2 rounded-full font-bold">
               {inboxCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('in_progress')}
+          className={`px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 shrink-0 ${
+            activeTab === 'in_progress'
+              ? 'bg-indigo-600 text-white font-semibold shadow'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Clock className="w-3.5 h-3.5 text-indigo-400" />
+          <span>In Progress</span>
+          {inProgressCount > 0 && (
+            <span className="text-[10px] bg-indigo-900/80 text-indigo-200 px-1.5 py-0.2 rounded-full font-bold">
+              {inProgressCount}
             </span>
           )}
         </button>
@@ -285,6 +304,12 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                           Inbox
                         </span>
                       )}
+                      {task.status === 'in_progress' && (
+                        <span className="text-[10px] font-bold text-sky-300 bg-sky-950/50 px-2 py-0.5 rounded-md border border-sky-800/50 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-sky-400" />
+                          <span>In Progress</span>
+                        </span>
+                      )}
                       {task.gtdContext && (
                         <span className="text-[10px] text-indigo-300 bg-indigo-950/40 px-2 py-0.5 rounded-md border border-indigo-900/40">
                           {task.gtdContext}
@@ -328,17 +353,21 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                     )}
                   </div>
 
-                  {/* Actions: Start Now, Clarify, Delete */}
+                  {/* Actions: Start/Resume, Clarify, Delete */}
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Start Now button (available even directly from Inbox!) */}
+                    {/* Start / Resume button */}
                     {task.status !== 'completed' && (
                       <button
                         onClick={() => handleStartNow(task.id)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition active:scale-95"
-                        title="Start this task now with Pomodoro timer"
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-white text-xs font-bold shadow transition active:scale-95 ${
+                          task.status === 'in_progress'
+                            ? 'bg-sky-600 hover:bg-sky-500'
+                            : 'bg-emerald-600 hover:bg-emerald-500'
+                        }`}
+                        title={task.status === 'in_progress' ? 'Resume this paused task' : 'Start this task now with Pomodoro timer'}
                       >
                         <Play className="w-3 h-3 fill-white" />
-                        <span>Start</span>
+                        <span>{task.status === 'in_progress' ? 'Resume' : 'Start'}</span>
                       </button>
                     )}
 

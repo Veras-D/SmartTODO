@@ -22,6 +22,23 @@ import {
 import { useTaskContext } from '../context/TaskContext';
 import { Task, EnergyLevel, GTDContext, Blocker, RecurrenceInterval } from '../types/task';
 import { generateId } from '../utils/storage';
+import { CustomSelect, SelectOption } from './CustomSelect';
+
+const GTD_CONTEXT_OPTIONS: SelectOption[] = [
+  { value: '@computer', label: '@computer', icon: <span>💻</span> },
+  { value: '@phone', label: '@phone', icon: <span>📱</span> },
+  { value: '@errands', label: '@errands', icon: <span>🚗</span> },
+  { value: '@home', label: '@home', icon: <span>🏠</span> },
+  { value: '@anywhere', label: '@anywhere', icon: <span>🌍</span> },
+];
+
+const RECURRENCE_OPTIONS: SelectOption[] = [
+  { value: 'none', label: 'No repeat' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'every_2_days', label: 'Every 2 days' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+];
 
 interface TasksViewProps {
   onSelectTaskForFocus: () => void;
@@ -367,55 +384,74 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                   </div>
                 )}
 
-                {/* Inline GTD Clarifier Section */}
+                {/* Minimalist GTD Clarifier Section */}
                 {isClarifying && (
-                  <div className="mt-4 pt-4 border-t border-slate-800 space-y-3.5 text-xs animate-fade-in bg-slate-950/60 p-4 rounded-2xl">
+                  <div className="mt-4 pt-4 border-t border-slate-800 space-y-3.5 text-xs animate-fade-in bg-slate-950/70 p-4 rounded-2xl border border-slate-800/60">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-indigo-400 flex items-center gap-1">
+                      <span className="font-semibold text-indigo-400 flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>Clarify based on GTD Method</span>
+                        <span>Clarify & Unblock</span>
                       </span>
                       <span className="text-[11px] text-slate-500">
-                        Make actionable & unblocked
+                        GTD Action Clarifier
                       </span>
                     </div>
 
-                    {/* 1. Next Physical Action */}
+                    {/* Next Physical Action */}
                     <div>
-                      <label className="text-slate-300 font-medium block mb-1">
-                        1. Next Physical Action (Immediate starting step)
+                      <label className="text-[11px] font-medium text-slate-400 block mb-1">
+                        Next Physical Action
                       </label>
                       <input
                         type="text"
                         value={nextAction}
                         onChange={(e) => setNextAction(e.target.value)}
-                        placeholder="e.g. Open Gmail, find order confirmation, click reply"
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                        placeholder="Immediate first step (e.g. Open Gmail, find order #)..."
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700/80 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                       />
                     </div>
 
-                    {/* 2. Context & Energy */}
+                    {/* Desired Outcome / Definition of Done */}
+                    <div>
+                      <label className="text-[11px] font-medium text-slate-400 block mb-1">
+                        Definition of Done
+                      </label>
+                      <input
+                        type="text"
+                        value={definitionOfDone}
+                        onChange={(e) => setDefinitionOfDone(e.target.value)}
+                        placeholder="Outcome / Finish line..."
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700/80 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+
+                    {/* Context, Recurrence, Energy, Time Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-slate-300 font-medium block mb-1">
-                          2. GTD Context (@location/tool)
+                        <label className="text-[11px] font-medium text-slate-400 block mb-1">
+                          Context
                         </label>
-                        <select
+                        <CustomSelect
                           value={gtdContext}
-                          onChange={(e) => setGtdContext(e.target.value as GTDContext)}
-                          className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500"
-                        >
-                          <option value="@computer">💻 @computer</option>
-                          <option value="@phone">📱 @phone</option>
-                          <option value="@errands">🚗 @errands</option>
-                          <option value="@home">🏠 @home</option>
-                          <option value="@anywhere">🌍 @anywhere</option>
-                        </select>
+                          onChange={(val) => setGtdContext(val as GTDContext)}
+                          options={GTD_CONTEXT_OPTIONS}
+                        />
                       </div>
 
                       <div>
-                        <label className="text-slate-300 font-medium block mb-1">
-                          3. Energy Level (Spoons)
+                        <label className="text-[11px] font-medium text-slate-400 block mb-1">
+                          Repeat Schedule
+                        </label>
+                        <CustomSelect
+                          value={recurrence}
+                          onChange={(val) => setRecurrence(val as RecurrenceInterval)}
+                          options={RECURRENCE_OPTIONS}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-medium text-slate-400 block mb-1">
+                          Energy (Spoons)
                         </label>
                         <div className="grid grid-cols-3 gap-1">
                           {(['low', 'medium', 'high'] as EnergyLevel[]).map(lvl => (
@@ -423,10 +459,10 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                               key={lvl}
                               type="button"
                               onClick={() => setEnergyLevel(lvl)}
-                              className={`py-1.5 rounded-lg border text-[11px] font-medium capitalize transition ${
+                              className={`py-2 rounded-xl border text-xs font-medium capitalize transition ${
                                 energyLevel === lvl
                                   ? 'bg-indigo-600 text-white border-indigo-500 shadow'
-                                  : 'bg-slate-900 text-slate-400 border-slate-800'
+                                  : 'bg-slate-900 text-slate-400 border-slate-700/80 hover:text-white'
                               }`}
                             >
                               {lvl}
@@ -434,87 +470,42 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                           ))}
                         </div>
                       </div>
-                    </div>
 
-                    {/* 3. Desired Outcome / Definition of Done */}
-                    <div>
-                      <label className="text-slate-300 font-medium block mb-1">
-                        4. Desired Outcome (Done When...)
-                      </label>
-                      <input
-                        type="text"
-                        value={definitionOfDone}
-                        onChange={(e) => setDefinitionOfDone(e.target.value)}
-                        placeholder="e.g. Email sent and confirmation receipt saved"
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
-
-                    {/* 4. Estimated Time */}
-                    <div>
-                      <label className="text-slate-300 font-medium block mb-1">
-                        5. Estimated Pomodoro Focus Time
-                      </label>
-                      <div className="flex gap-2">
-                        {[5, 15, 25, 45].map(mins => (
-                          <button
-                            key={mins}
-                            type="button"
-                            onClick={() => setEstimatedMinutes(mins)}
-                            className={`px-3 py-1 rounded-lg border text-xs ${
-                              estimatedMinutes === mins
-                                ? 'bg-indigo-600 text-white border-indigo-500 font-semibold'
-                                : 'bg-slate-900 text-slate-400 border-slate-800'
-                            }`}
-                          >
-                            {mins}m
-                          </button>
-                        ))}
+                      <div>
+                        <label className="text-[11px] font-medium text-slate-400 block mb-1">
+                          Focus Duration
+                        </label>
+                        <div className="grid grid-cols-4 gap-1">
+                          {[15, 25, 45, 60].map(mins => (
+                            <button
+                              key={mins}
+                              type="button"
+                              onClick={() => setEstimatedMinutes(mins)}
+                              className={`py-2 rounded-xl border text-xs font-medium transition ${
+                                estimatedMinutes === mins
+                                  ? 'bg-indigo-600 text-white border-indigo-500 shadow font-semibold'
+                                  : 'bg-slate-900 text-slate-400 border-slate-700/80 hover:text-white'
+                              }`}
+                            >
+                              {mins}m
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
-                    {/* 5. Recurrence Rule */}
+                    {/* Blockers / Waiting For */}
                     <div>
-                      <label className="text-slate-300 font-medium block mb-1 flex items-center gap-1.5">
-                        <Repeat className="w-3.5 h-3.5 text-indigo-400" />
-                        <span>6. Recurrence (Repeating task schedule)</span>
-                      </label>
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-                        {[
-                          { id: 'none', label: 'No Repeat' },
-                          { id: 'daily', label: 'Daily' },
-                          { id: 'every_2_days', label: 'Every 2 days' },
-                          { id: 'weekly', label: 'Weekly' },
-                          { id: 'monthly', label: 'Monthly' }
-                        ].map(opt => (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            onClick={() => setRecurrence(opt.id as RecurrenceInterval)}
-                            className={`py-1.5 px-2 rounded-xl border text-[11px] font-medium transition ${
-                              recurrence === opt.id
-                                ? 'bg-indigo-600 text-white border-indigo-500 shadow'
-                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* 6. Blockers / Waiting For */}
-                    <div>
-                      <label className="text-rose-300 font-medium block mb-1">
-                        7. Blockers / Waiting For (Optional)
+                      <label className="text-[11px] font-medium text-rose-400/90 block mb-1">
+                        Blockers / Waiting For (Optional)
                       </label>
                       <div className="flex gap-2">
                         <input
                           type="text"
                           value={newBlockerText}
                           onChange={(e) => setNewBlockerText(e.target.value)}
-                          placeholder="Waiting for reply from X, missing credit card..."
-                          className="flex-1 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+                          placeholder="Waiting on person, missing asset..."
+                          className="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700/80 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
@@ -525,19 +516,19 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                         <button
                           type="button"
                           onClick={() => addBlockerToTask(task)}
-                          className="px-3 py-1.5 rounded-xl bg-rose-950/40 text-rose-300 border border-rose-800 text-xs font-semibold"
+                          className="px-3.5 py-2 rounded-xl bg-rose-950/40 text-rose-300 border border-rose-800/80 hover:bg-rose-900/40 text-xs font-medium transition shrink-0"
                         >
-                          + Blocker
+                          + Add
                         </button>
                       </div>
                     </div>
 
-                    {/* Clarifier Action Buttons */}
-                    <div className="pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
+                    {/* Clarifier Actions */}
+                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
                       <button
                         type="button"
                         onClick={() => saveGtdDetails(task, false)}
-                        className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium"
+                        className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition"
                       >
                         Save Draft
                       </button>
@@ -546,10 +537,10 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                         <button
                           type="button"
                           onClick={() => saveGtdDetails(task, true)}
-                          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow flex items-center gap-1.5"
+                          className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition flex items-center gap-1.5 active:scale-95"
                         >
                           <Dices className="w-3.5 h-3.5" />
-                          <span>Move to Ready Pool 🎲</span>
+                          <span>Ready Pool 🎲</span>
                         </button>
 
                         <button
@@ -558,7 +549,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                             saveGtdDetails(task, true);
                             handleStartNow(task.id);
                           }}
-                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow flex items-center gap-1.5"
+                          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow transition flex items-center gap-1.5 active:scale-95"
                         >
                           <Play className="w-3.5 h-3.5 fill-white" />
                           <span>Start Now ▶</span>

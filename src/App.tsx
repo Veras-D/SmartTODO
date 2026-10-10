@@ -2,23 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { TaskProvider } from './context/TaskContext';
 import { Navbar } from './components/Navbar';
 import { FocusHUD } from './components/FocusHUD';
-import { SmartifyLounge } from './components/SmartifyLounge';
-import { ColdStorageView } from './components/ColdStorageView';
-import { CantDoModal } from './components/CantDoModal';
+import { TasksView } from './components/TasksView';
 import { QuickCaptureModal } from './components/QuickCaptureModal';
 import { GoogleKeepImporterModal } from './components/GoogleKeepImporterModal';
 import { BacklogBankruptcyModal } from './components/BacklogBankruptcyModal';
 
 const MainLayout: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<'hud' | 'smartify' | 'archive'>('hud');
+  const [currentTab, setCurrentTab] = useState<'focus' | 'tasks'>('focus');
   
   // Modals state
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
-  const [isCantDoOpen, setIsCantDoOpen] = useState(false);
   const [isKeepImporterOpen, setIsKeepImporterOpen] = useState(false);
   const [isBankruptcyOpen, setIsBankruptcyOpen] = useState(false);
 
-  // Global hotkey listener: 'N' to open quick capture
+  // Global hotkey: 'N' to open quick capture
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
@@ -36,7 +33,7 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Top Navigation */}
+      {/* Minimal Top Navigation */}
       <Navbar
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
@@ -45,33 +42,25 @@ const MainLayout: React.FC = () => {
         onOpenBankruptcy={() => setIsBankruptcyOpen(true)}
       />
 
-      {/* Main Tab Content */}
-      <main className="flex-1 pb-16">
-        {currentTab === 'hud' && (
-          <FocusHUD
-            onOpenCantDoModal={() => setIsCantDoOpen(true)}
-            onOpenSmartifyTab={() => setCurrentTab('smartify')}
-          />
+      {/* Main Focus or Tasks view */}
+      <main className="flex-1 pb-12">
+        {currentTab === 'focus' ? (
+          <FocusHUD onOpenTasksTab={() => setCurrentTab('tasks')} />
+        ) : (
+          <TasksView />
         )}
-        {currentTab === 'smartify' && <SmartifyLounge />}
-        {currentTab === 'archive' && <ColdStorageView />}
       </main>
 
-      {/* Modals */}
+      {/* Clean Modals for Quick Capture & Importers */}
       <QuickCaptureModal
         isOpen={isQuickCaptureOpen}
         onClose={() => setIsQuickCaptureOpen(false)}
       />
 
-      <CantDoModal
-        isOpen={isCantDoOpen}
-        onClose={() => setIsCantDoOpen(false)}
-      />
-
       <GoogleKeepImporterModal
         isOpen={isKeepImporterOpen}
         onClose={() => setIsKeepImporterOpen(false)}
-        onImportComplete={() => setCurrentTab('smartify')}
+        onImportComplete={() => setCurrentTab('tasks')}
       />
 
       <BacklogBankruptcyModal

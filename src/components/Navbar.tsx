@@ -1,24 +1,21 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Dices, 
-  Sparkles, 
-  FolderArchive, 
+  ListTodo, 
   Plus, 
+  MoreVertical, 
   Volume2, 
   VolumeX, 
   FileDown, 
-  Zap, 
-  BatteryLow, 
-  Flame, 
-  Clock, 
-  AlertOctagon 
+  AlertOctagon, 
+  Download,
+  CheckCircle2
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
-import { RouletteFilter } from '../types/task';
 
 interface NavbarProps {
-  currentTab: 'hud' | 'smartify' | 'archive';
-  setCurrentTab: (tab: 'hud' | 'smartify' | 'archive') => void;
+  currentTab: 'focus' | 'tasks';
+  setCurrentTab: (tab: 'focus' | 'tasks') => void;
   onOpenQuickCapture: () => void;
   onOpenKeepImporter: () => void;
   onOpenBankruptcy: () => void;
@@ -32,162 +29,152 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenBankruptcy
 }) => {
   const { 
-    filter, 
-    setFilter, 
     soundEnabled, 
     toggleSound, 
     completedTodayCount, 
-    inboxTasks,
-    unblockedReadyTasks 
+    unblockedReadyTasks,
+    tasks
   } = useTaskContext();
 
-  const filterButtons: { id: RouletteFilter; label: string; icon: React.ReactNode; color: string }[] = [
-    { id: 'all', label: 'All Ready', icon: <Sparkles className="w-3.5 h-3.5" />, color: 'hover:bg-slate-800' },
-    { id: 'low_energy', label: 'Low Spoon', icon: <BatteryLow className="w-3.5 h-3.5 text-emerald-400" />, color: 'hover:bg-emerald-950/40' },
-    { id: 'deep_focus', label: 'Deep Focus', icon: <Flame className="w-3.5 h-3.5 text-amber-400" />, color: 'hover:bg-amber-950/40' },
-    { id: 'quick_win', label: '<10 Mins', icon: <Clock className="w-3.5 h-3.5 text-sky-400" />, color: 'hover:bg-sky-950/40' },
-  ];
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as HTMLElement)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Export JSON backup
+  const handleExportJSON = () => {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(tasks, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `smarttodo_backup_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    setIsMenuOpen(false);
+  };
 
   return (
-    <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-30 px-4 py-2.5">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+    <header className="border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-30 px-6 py-3">
+      <div className="max-w-4xl mx-auto flex items-center justify-between">
         
-        {/* Logo and Brand */}
-        <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Dices className="w-5 h-5 text-white animate-pulse" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base tracking-tight text-white">SmartTODO</span>
-                <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">ADHD Engine</span>
-              </div>
-              <p className="text-[11px] text-slate-400">Zero-Overwhelm Focus</p>
-            </div>
+        {/* Minimal Brand */}
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm">
+            <Dices className="w-4 h-4" />
           </div>
-
-          {/* Quick Capture Button (Mobile) */}
-          <button
-            onClick={onOpenQuickCapture}
-            className="md:hidden flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold shadow hover:bg-indigo-500 active:scale-95 transition"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add</span>
-          </button>
+          <span className="font-bold text-sm tracking-tight text-white">SmartTODO</span>
+          {completedTodayCount > 0 && (
+            <span className="text-[11px] text-emerald-400 font-medium ml-2 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> {completedTodayCount} done today
+            </span>
+          )}
         </div>
 
-        {/* View Navigation Switcher */}
-        <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800/80">
+        {/* Clean Center Navigation: Focus vs Tasks */}
+        <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800/80">
           <button
-            onClick={() => setCurrentTab('hud')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-              currentTab === 'hud'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            onClick={() => setCurrentTab('focus')}
+            className={`flex items-center gap-1.5 px-3.5 py-1 rounded-lg text-xs font-medium transition ${
+              currentTab === 'focus'
+                ? 'bg-indigo-600 text-white shadow'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <Dices className="w-3.5 h-3.5" />
-            <span>Focus Roulette</span>
-            <span className="ml-1 px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-slate-300">
+            <span>Focus</span>
+          </button>
+
+          <button
+            onClick={() => setCurrentTab('tasks')}
+            className={`flex items-center gap-1.5 px-3.5 py-1 rounded-lg text-xs font-medium transition ${
+              currentTab === 'tasks'
+                ? 'bg-indigo-600 text-white shadow'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <ListTodo className="w-3.5 h-3.5" />
+            <span>Tasks</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-slate-300">
               {unblockedReadyTasks.length}
             </span>
           </button>
-
-          <button
-            onClick={() => setCurrentTab('smartify')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-              currentTab === 'smartify'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span>SMART-ify Lounge</span>
-            {inboxTasks.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30">
-                {inboxTasks.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setCurrentTab('archive')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-              currentTab === 'archive'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
-          >
-            <FolderArchive className="w-3.5 h-3.5" />
-            <span>Archive</span>
-          </button>
         </div>
 
-        {/* Roulette Energy Filter & Actions */}
-        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-          {/* Energy Spoon Filters (Only shown when on HUD tab) */}
-          {currentTab === 'hud' && (
-            <div className="hidden lg:flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800">
-              {filterButtons.map(btn => (
-                <button
-                  key={btn.id}
-                  onClick={() => setFilter(btn.id)}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition ${
-                    filter === btn.id
-                      ? 'bg-slate-800 text-white shadow border border-slate-700'
-                      : `text-slate-400 ${btn.color}`
-                  }`}
-                >
-                  {btn.icon}
-                  <span>{btn.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Quick Capture (Desktop) */}
+        {/* Right Actions: + Add Task & Minimal Menu */}
+        <div className="flex items-center gap-2">
           <button
             onClick={onOpenQuickCapture}
-            title="Press 'N' to quick dump a task"
-            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold shadow hover:bg-indigo-500 active:scale-95 transition"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition active:scale-95"
           >
-            <Plus className="w-4 h-4" />
-            <span>Capture</span>
-            <kbd className="ml-1 text-[10px] px-1 py-0.5 rounded bg-indigo-700/60 font-mono">N</kbd>
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Task</span>
           </button>
 
-          {/* Google Keep Import */}
-          <button
-            onClick={onOpenKeepImporter}
-            title="Import notes from Google Keep"
-            className="p-2 rounded-xl text-slate-400 hover:text-amber-300 hover:bg-amber-950/30 border border-slate-800 transition"
-          >
-            <FileDown className="w-4 h-4" />
-          </button>
+          {/* Discreet Menu for secondary tools */}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setIsMenuOpen(prev => !prev)}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-900 border border-transparent hover:border-slate-800 transition"
+              title="More options"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
 
-          {/* Backlog Bankruptcy */}
-          <button
-            onClick={onOpenBankruptcy}
-            title="Declare Backlog Bankruptcy (Clean fresh start)"
-            className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 border border-slate-800 transition"
-          >
-            <AlertOctagon className="w-4 h-4" />
-          </button>
+            {isMenuOpen && (
+              <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl py-1.5 text-xs z-50 animate-fade-in">
+                <button
+                  onClick={() => {
+                    toggleSound();
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-slate-300 hover:bg-slate-800 transition text-left"
+                >
+                  {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-500" />}
+                  <span>{soundEnabled ? 'Mute Sounds' : 'Enable Sounds'}</span>
+                </button>
 
-          {/* Sound Toggle */}
-          <button
-            onClick={toggleSound}
-            title={soundEnabled ? 'Sound effects on' : 'Sound muted'}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800 transition"
-          >
-            {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-500" />}
-          </button>
+                <button
+                  onClick={() => {
+                    onOpenKeepImporter();
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-slate-300 hover:bg-slate-800 transition text-left"
+                >
+                  <FileDown className="w-4 h-4 text-amber-400" />
+                  <span>Import from Google Keep</span>
+                </button>
 
-          {/* Daily Win Badge */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-medium text-slate-300">
-            <span className="text-emerald-400 font-bold">{completedTodayCount}</span>
-            <span className="text-slate-400">Wins today</span>
+                <button
+                  onClick={() => {
+                    onOpenBankruptcy();
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-slate-300 hover:bg-slate-800 transition text-left"
+                >
+                  <AlertOctagon className="w-4 h-4 text-rose-400" />
+                  <span>Fresh Start (Bankruptcy)</span>
+                </button>
+
+                <div className="my-1 border-t border-slate-800" />
+
+                <button
+                  onClick={handleExportJSON}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition text-left"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Backup Tasks (JSON)</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

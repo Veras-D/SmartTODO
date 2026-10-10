@@ -1,32 +1,27 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Dices, 
   CheckCircle2, 
   RotateCcw, 
   Scissors, 
-  Sparkles, 
-  Clock, 
   BatteryLow, 
-  Flame, 
-  Zap, 
-  CheckSquare, 
-  Square,
-  HelpCircle,
-  AlertCircle
+  Square, 
+  CheckSquare,
+  Sparkles,
+  ShieldAlert
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
-import { EnergyLevel, RouletteFilter } from '../types/task';
 
 interface FocusHUDProps {
-  onOpenCantDoModal: () => void;
-  onOpenSmartifyTab: () => void;
+  onOpenTasksTab: () => void;
 }
 
-export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenCantDoModal, onOpenSmartifyTab }) => {
+export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
   const { 
     activeTask, 
     rollRandomTask, 
     completeActiveTask, 
+    handleCantDo,
     activateFrictionBuster,
     toggleMicroStep, 
     isRolling, 
@@ -35,300 +30,271 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenCantDoModal, onOpenSma
     setFilter 
   } = useTaskContext();
 
+  const [showSkipOptions, setShowSkipOptions] = useState(false);
+  const [blockerInput, setBlockerInput] = useState('');
+  const [isAddingBlocker, setIsAddingBlocker] = useState(false);
+
   // Keyboard shortcuts: Space to roll, Enter to complete
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if typing in an input or textarea
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
         return;
       }
-
       if (e.code === 'Space' && !isRolling) {
         e.preventDefault();
         rollRandomTask();
       } else if (e.code === 'Enter' && activeTask) {
         e.preventDefault();
         completeActiveTask();
-      } else if (e.key === 'r' && activeTask) {
-        e.preventDefault();
-        onOpenCantDoModal();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTask, isRolling, rollRandomTask, completeActiveTask, onOpenCantDoModal]);
+  }, [activeTask, isRolling, rollRandomTask, completeActiveTask]);
 
-  const getEnergyBadge = (level: EnergyLevel) => {
-    switch (level) {
-      case 'low':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <BatteryLow className="w-3.5 h-3.5" /> Low Spoon / Easy
-          </span>
-        );
-      case 'high':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <Flame className="w-3.5 h-3.5" /> High Energy / Deep Focus
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            <Zap className="w-3.5 h-3.5" /> Medium Energy
-          </span>
-        );
+  // Reset skip options on task change
+  useEffect(() => {
+    setShowSkipOptions(false);
+    setIsAddingBlocker(false);
+    setBlockerInput('');
+  }, [activeTask?.id]);
+
+  const handleSkipReason = (reason: 'too_tired' | 'blocked' | 'not_now') => {
+    if (reason === 'blocked' && !isAddingBlocker) {
+      setIsAddingBlocker(true);
+      return;
     }
+    handleCantDo(reason, blockerInput);
+    setShowSkipOptions(false);
+    setIsAddingBlocker(false);
+    setBlockerInput('');
+    // Automatically roll the next task
+    setTimeout(() => {
+      rollRandomTask();
+    }, 120);
   };
 
-  const completedStepsCount = activeTask?.microSteps.filter(s => s.completed).length || 0;
-  const totalStepsCount = activeTask?.microSteps.length || 0;
-  const progressPercent = totalStepsCount > 0 ? (completedStepsCount / totalStepsCount) * 100 : 0;
-
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4 flex flex-col items-center justify-center min-h-[calc(100vh-140px)]">
+    <div className="max-w-2xl mx-auto py-12 px-4 flex flex-col items-center justify-center min-h-[calc(100vh-140px)]">
       
-      {/* If No Active Task: Display the Roll Engine */}
+      {/* 1. Idle View: What should I do now? */}
       {!activeTask ? (
-        <div className="w-full text-center flex flex-col items-center">
+        <div className="w-full flex flex-col items-center text-center animate-fade-in">
           
-          {/* Subtle Energy Filter Chips on Mobile */}
-          <div className="flex lg:hidden flex-wrap items-center justify-center gap-1.5 mb-6">
-            {(['all', 'low_energy', 'deep_focus', 'quick_win'] as RouletteFilter[]).map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
-                  filter === f
-                    ? 'bg-indigo-600 text-white font-semibold'
-                    : 'bg-slate-900 text-slate-400 border border-slate-800'
-                }`}
-              >
-                {f === 'all' && 'All Ready'}
-                {f === 'low_energy' && '🪫 Low Spoon'}
-                {f === 'deep_focus' && '⚡ Deep Focus'}
-                {f === 'quick_win' && '⏱️ <10 Min'}
-              </button>
-            ))}
-          </div>
-
-          {/* Glowing Roll Trigger */}
-          <div className="relative group mb-8">
-            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 via-sky-500 to-indigo-500 rounded-3xl blur-xl opacity-40 group-hover:opacity-75 transition duration-500 animate-pulse"></div>
-            <button
-              onClick={rollRandomTask}
-              disabled={isRolling || unblockedReadyTasks.length === 0}
-              className={`relative px-10 py-10 rounded-3xl bg-slate-900 border-2 border-indigo-500/40 text-white shadow-2xl flex flex-col items-center justify-center gap-4 transition-all duration-300 transform active:scale-95 ${
-                unblockedReadyTasks.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:border-indigo-400 hover:scale-105'
-              }`}
-            >
-              <div className={`w-20 h-20 rounded-2xl bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center ${isRolling ? 'animate-spin' : ''}`}>
-                <Dices className="w-12 h-12 text-indigo-400" />
-              </div>
-              <div>
-                <span className="text-2xl font-black tracking-tight text-white block">
-                  {isRolling ? 'Rolling...' : 'Roll Next Mission'}
-                </span>
-                <span className="text-xs text-indigo-300/80 font-mono mt-1 block">
-                  Press [Space] to Roll
-                </span>
-              </div>
-            </button>
-          </div>
-
-          {/* Status count and reassurance */}
-          <div className="max-w-md bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 text-center">
-            {unblockedReadyTasks.length > 0 ? (
-              <>
-                <p className="text-sm font-medium text-slate-300">
-                  <span className="text-indigo-400 font-bold text-base">{unblockedReadyTasks.length}</span> unblocked tasks are primed and ready for action.
-                </p>
-                <p className="text-xs text-slate-400 mt-1.5">
-                  The app chooses for you. Zero decision fatigue, zero overwhelming list.
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center justify-center gap-2 text-amber-400 mb-2">
-                  <AlertCircle className="w-5 h-5" />
-                  <span className="font-bold text-sm">No Unblocked Ready Tasks</span>
-                </div>
-                <p className="text-xs text-slate-400">
-                  You have cleared all ready tasks or tasks are waiting for clarification in the inbox.
-                </p>
-                <button
-                  onClick={onOpenSmartifyTab}
-                  className="mt-3.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-500 transition shadow"
-                >
-                  Go to SMART-ify Lounge
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* If Active Task Is Selected: Display Single Focused Task HUD */
-        <div className="w-full flex flex-col items-center">
-          
-          {/* Active Card */}
-          <div className="w-full bg-slate-900/90 border-2 border-indigo-500/50 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden transition-all duration-300">
-            
-            {/* Top metadata badges */}
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-              <div className="flex items-center gap-2">
-                {getEnergyBadge(activeTask.energyLevel)}
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-300 border border-slate-700">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" /> ~{activeTask.estimatedMinutes} mins
-                </span>
-              </div>
-              <span className="text-[11px] font-semibold text-indigo-400/80 uppercase tracking-wider bg-indigo-950/40 px-2.5 py-1 rounded-lg border border-indigo-800/40">
-                Single Focus Mode
-              </span>
+          <button
+            onClick={rollRandomTask}
+            disabled={isRolling || unblockedReadyTasks.length === 0}
+            className={`w-full max-w-sm p-10 rounded-3xl bg-slate-900 border border-slate-800 text-white shadow-2xl flex flex-col items-center justify-center gap-4 transition-all duration-200 active:scale-95 ${
+              unblockedReadyTasks.length === 0 
+                ? 'opacity-40 cursor-not-allowed' 
+                : 'hover:border-indigo-500/60 hover:bg-slate-900/90 hover:scale-105'
+            }`}
+          >
+            <div className={`w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center ${isRolling ? 'animate-spin' : ''}`}>
+              <Dices className="w-9 h-9" />
             </div>
 
-            {/* Task Title */}
+            <div>
+              <span className="text-xl font-bold text-white block">
+                {isRolling ? 'Picking...' : 'What should I do now?'}
+              </span>
+              <span className="text-xs text-slate-400 mt-1 block">
+                Click or press Space
+              </span>
+            </div>
+          </button>
+
+          {/* Calming, subtle footer info */}
+          <div className="mt-6 flex flex-col items-center gap-2 text-xs text-slate-400">
+            {unblockedReadyTasks.length > 0 ? (
+              <div className="flex items-center gap-3">
+                <span>{unblockedReadyTasks.length} tasks ready</span>
+                <span>•</span>
+                <button
+                  onClick={() => setFilter(filter === 'low_energy' ? 'all' : 'low_energy')}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border transition ${
+                    filter === 'low_energy'
+                      ? 'bg-emerald-950/40 text-emerald-300 border-emerald-500/40'
+                      : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-slate-300'
+                  }`}
+                >
+                  <BatteryLow className="w-3.5 h-3.5" />
+                  <span>{filter === 'low_energy' ? 'Low energy active' : 'Low energy?'}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="text-center">
+                <p className="text-slate-400">All ready tasks are completed!</p>
+                <button
+                  onClick={onOpenTasksTab}
+                  className="mt-2 text-indigo-400 hover:text-indigo-300 font-semibold underline"
+                >
+                  View your task list
+                </button>
+              </div>
+            )}
+          </div>
+
+        </div>
+      ) : (
+        /* 2. Active Focus Task Card */
+        <div className="w-full animate-fade-in">
+          
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-7 shadow-2xl relative">
+            
+            {/* Top subtle indicators */}
+            <div className="flex items-center justify-between text-xs text-slate-400 mb-4">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Current Mission</span>
+              </span>
+              {activeTask.estimatedMinutes && (
+                <span className="text-slate-500">
+                  ~{activeTask.estimatedMinutes} mins
+                </span>
+              )}
+            </div>
+
+            {/* Big readable Task Title */}
             <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-snug mb-3">
               {activeTask.title}
             </h1>
 
-            {/* Definition of Done Box (DoD) */}
+            {/* Definition of Done (DoD) */}
             {activeTask.definitionOfDone && (
-              <div className="mb-5 p-3.5 rounded-xl bg-indigo-950/20 border border-indigo-500/20 flex items-start gap-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-xs font-bold text-indigo-300 uppercase tracking-wide block">
-                    Definition of Done:
-                  </span>
-                  <p className="text-sm text-slate-200 mt-0.5">
-                    {activeTask.definitionOfDone}
-                  </p>
-                </div>
-              </div>
+              <p className="text-xs text-indigo-300/90 mb-4 flex items-center gap-1.5 bg-indigo-950/30 p-2.5 rounded-xl border border-indigo-900/40">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span><b>Done when:</b> {activeTask.definitionOfDone}</span>
+              </p>
             )}
 
-            {/* Friction Buster Starter Banner (if active) */}
+            {/* Friction Buster Starter (if active) */}
             {activeTask.frictionBusterStep && (
-              <div className="mb-5 p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/40 flex items-start gap-2.5 animate-pulse">
+              <div className="mb-4 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex items-start gap-2 text-xs text-emerald-200">
                 <Scissors className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-xs font-bold text-emerald-300 uppercase tracking-wide block">
-                    ⚡ 2-Minute Micro-Starter:
-                  </span>
-                  <p className="text-sm font-semibold text-emerald-100 mt-0.5">
-                    {activeTask.frictionBusterStep}
-                  </p>
-                </div>
+                <span><b>Just do 2 minutes:</b> {activeTask.frictionBusterStep}</span>
               </div>
             )}
 
-            {/* Micro-Steps Breakdown (Goblin-style checklist) */}
+            {/* Micro-Steps (if present) */}
             {activeTask.microSteps && activeTask.microSteps.length > 0 && (
-              <div className="mb-6 bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                    Micro-Steps ({completedStepsCount}/{totalStepsCount})
-                  </span>
-                  <span className="text-xs text-indigo-400 font-mono font-bold">
-                    {Math.round(progressPercent)}%
-                  </span>
-                </div>
-
-                {/* Progress bar */}
-                <div className="w-full bg-slate-800 rounded-full h-1.5 mb-3.5 overflow-hidden">
-                  <div 
-                    className="bg-indigo-500 h-1.5 rounded-full transition-all duration-300"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  {activeTask.microSteps.map(step => (
-                    <button
-                      key={step.id}
-                      onClick={() => toggleMicroStep(activeTask.id, step.id)}
-                      className={`w-full flex items-center gap-3 p-2.5 rounded-xl text-left text-sm transition ${
-                        step.completed 
-                          ? 'bg-slate-900/50 text-slate-500 line-through' 
-                          : 'bg-slate-800/60 text-slate-200 hover:bg-slate-800'
-                      }`}
-                    >
-                      {step.completed ? (
-                        <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
-                      ) : (
-                        <Square className="w-4 h-4 text-slate-400 shrink-0" />
-                      )}
-                      <span>{step.title}</span>
-                    </button>
-                  ))}
-                </div>
+              <div className="my-4 space-y-1.5 border-t border-slate-800/80 pt-3">
+                {activeTask.microSteps.map(step => (
+                  <button
+                    key={step.id}
+                    onClick={() => toggleMicroStep(activeTask.id, step.id)}
+                    className={`w-full flex items-center gap-2.5 p-2 rounded-xl text-left text-xs transition ${
+                      step.completed ? 'text-slate-500 line-through' : 'text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    {step.completed ? (
+                      <CheckSquare className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    ) : (
+                      <Square className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                    )}
+                    <span>{step.title}</span>
+                  </button>
+                ))}
               </div>
             )}
 
             {/* Notes (if any) */}
             {activeTask.notes && (
-              <p className="text-xs text-slate-400 italic mb-6">
-                💡 Note: {activeTask.notes}
+              <p className="text-xs text-slate-400 italic mb-4">
+                Note: {activeTask.notes}
               </p>
             )}
 
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-slate-800/80">
+            {/* Action Buttons: Just Done & Can't do it now */}
+            <div className="flex items-center gap-3 pt-4 border-t border-slate-800/80">
               
-              {/* Done Button (Primary) */}
+              {/* Primary Complete Button */}
               <button
                 onClick={completeActiveTask}
-                className="w-full sm:flex-1 py-4 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-base shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2.5 transition"
+                className="flex-1 py-3.5 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-sm shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition"
               >
-                <CheckCircle2 className="w-5 h-5" />
-                <span>Mark as Done! 🎉</span>
-                <kbd className="hidden sm:inline-block text-[10px] px-1.5 py-0.5 rounded bg-emerald-700/60 font-mono">
-                  Enter
-                </kbd>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Done!</span>
               </button>
 
-              {/* Can't Do It Now (Adaptive Skip Modal) */}
+              {/* Can't do it now / Skip */}
               <button
-                onClick={onOpenCantDoModal}
-                className="w-full sm:w-auto py-3.5 px-5 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-semibold text-sm border border-slate-700/80 flex items-center justify-center gap-2 transition"
+                onClick={() => setShowSkipOptions(prev => !prev)}
+                className="py-3.5 px-5 rounded-2xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 font-medium text-xs border border-slate-700 flex items-center gap-1.5 transition"
               >
-                <RotateCcw className="w-4 h-4 text-amber-400" />
-                <span>Can't do it now</span>
-                <kbd className="hidden sm:inline-block text-[10px] px-1 py-0.5 rounded bg-slate-700 text-slate-300 font-mono">
-                  R
-                </kbd>
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Can&rsquo;t do it now</span>
               </button>
 
-              {/* Friction Buster Button */}
+              {/* Tiny Friction Buster button */}
               {!activeTask.frictionBusterStep && (
                 <button
                   onClick={activateFrictionBuster}
-                  title="Shrink this task to a 2-minute starter step"
-                  className="w-full sm:w-auto py-3.5 px-4 rounded-2xl bg-slate-800 hover:bg-emerald-950/40 hover:text-emerald-300 active:scale-95 text-slate-300 font-medium text-sm border border-slate-700/80 flex items-center justify-center gap-1.5 transition"
+                  title="Make this task smaller (2-min start)"
+                  className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-emerald-300 border border-slate-700 transition"
                 >
-                  <Scissors className="w-4 h-4 text-emerald-400" />
-                  <span>Shrink to 2m</span>
+                  <Scissors className="w-4 h-4" />
                 </button>
               )}
 
-              {/* Direct Reroll */}
-              <button
-                onClick={rollRandomTask}
-                title="Reroll without recording reason"
-                className="p-3.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700/80 transition"
-              >
-                <Dices className="w-5 h-5" />
-              </button>
-
             </div>
 
-          </div>
+            {/* Quick Minimal Inline Skip Reason Chips */}
+            {showSkipOptions && (
+              <div className="mt-4 pt-4 border-t border-slate-800 animate-fade-in">
+                <span className="text-[11px] text-slate-400 block mb-2 font-medium">
+                  Why can&rsquo;t you do it right now?
+                </span>
 
-          {/* Guilt-Free Guidance Note below card */}
-          <p className="text-xs text-slate-400 mt-4 text-center flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Stuck or feeling resistance? Click &ldquo;Can&rsquo;t do it now&rdquo; &mdash; there is zero penalty for rerolling.</span>
-          </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleSkipReason('too_tired')}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-emerald-950/40 text-slate-300 hover:text-emerald-300 text-xs font-medium border border-slate-700 transition flex items-center gap-1.5"
+                  >
+                    <span>😴 Too tired (give me something easy)</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleSkipReason('blocked')}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 text-xs font-medium border border-slate-700 transition flex items-center gap-1.5"
+                  >
+                    <span>🛑 Blocked by something</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleSkipReason('not_now')}
+                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-xs font-medium border border-slate-700 transition"
+                  >
+                    <span>⏭️ Just skip for today</span>
+                  </button>
+                </div>
+
+                {/* Inline Blocker input if clicked */}
+                {isAddingBlocker && (
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      type="text"
+                      value={blockerInput}
+                      onChange={(e) => setBlockerInput(e.target.value)}
+                      placeholder="What is blocking you? (e.g. Waiting for reply)"
+                      className="flex-1 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSkipReason('blocked');
+                      }}
+                    />
+                    <button
+                      onClick={() => handleSkipReason('blocked')}
+                      className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow"
+                    >
+                      Park Task
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+          </div>
 
         </div>
       )}

@@ -21,7 +21,7 @@ import {
   Link
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
-import { Task, EnergyLevel, GTDContext, Blocker, RecurrenceInterval } from '../types/task';
+import { Task, EnergyLevel, TaskImportance, GTDContext, Blocker, RecurrenceInterval } from '../types/task';
 import { generateId } from '../utils/storage';
 import { getEligibleBlockerCandidates } from '../utils/taskDependencies';
 import { CustomSelect, SelectOption } from './CustomSelect';
@@ -66,6 +66,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
   const [nextAction, setNextAction] = useState('');
   const [gtdContext, setGtdContext] = useState<GTDContext>('@computer');
   const [definitionOfDone, setDefinitionOfDone] = useState('');
+  const [importance, setImportance] = useState<TaskImportance>('medium');
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel>('medium');
   const [estimatedMinutes, setEstimatedMinutes] = useState<number>(25);
   const [recurrence, setRecurrence] = useState<RecurrenceInterval>('none');
@@ -95,6 +96,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
     setNextAction(task.nextAction || '');
     setGtdContext(task.gtdContext || '@computer');
     setDefinitionOfDone(task.definitionOfDone || '');
+    setImportance(task.importance || 'medium');
     setEnergyLevel(task.energyLevel || 'medium');
     setEstimatedMinutes(task.estimatedMinutes || 25);
     setRecurrence(task.recurrence || 'none');
@@ -113,6 +115,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
       nextAction: nextAction.trim() || undefined,
       gtdContext,
       definitionOfDone: definitionOfDone.trim() || undefined,
+      importance,
       energyLevel,
       estimatedMinutes,
       recurrence: recurrence !== 'none' ? recurrence : undefined,
@@ -379,6 +382,17 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                           {task.gtdContext}
                         </span>
                       )}
+                      {task.importance && (
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                          task.importance === 'high'
+                            ? 'text-amber-300 bg-amber-950/40 border-amber-800/40'
+                            : task.importance === 'medium'
+                            ? 'text-indigo-300 bg-indigo-950/40 border-indigo-900/40'
+                            : 'text-slate-400 bg-slate-900/40 border-slate-800'
+                        }`}>
+                          {task.importance === 'high' ? '🔥 High' : task.importance === 'medium' ? '⚡ Med' : '🌱 Low'}
+                        </span>
+                      )}
                       {task.energyLevel === 'low' && (
                         <span className="text-[10px] text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-900/40">
                           Low Spoon
@@ -587,6 +601,32 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
 
                       <div>
                         <label className="text-[11px] font-medium text-slate-400 block mb-1">
+                          Importance
+                        </label>
+                        <div className="grid grid-cols-3 gap-1">
+                          {(['low', 'medium', 'high'] as TaskImportance[]).map(lvl => (
+                            <button
+                              key={lvl}
+                              type="button"
+                              onClick={() => setImportance(lvl)}
+                              className={`py-2 rounded-xl border text-xs font-medium capitalize transition ${
+                                importance === lvl
+                                  ? lvl === 'high'
+                                    ? 'bg-amber-600 text-white border-amber-500 shadow font-semibold'
+                                    : lvl === 'medium'
+                                    ? 'bg-indigo-600 text-white border-indigo-500 shadow font-semibold'
+                                    : 'bg-slate-700 text-white border-slate-600 shadow font-semibold'
+                                  : 'bg-slate-900 text-slate-400 border-slate-700/80 hover:text-white'
+                              }`}
+                            >
+                              {lvl === 'high' ? '🔥 High' : lvl === 'medium' ? '⚡ Med' : '🌱 Low'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[11px] font-medium text-slate-400 block mb-1">
                           Energy (Spoons)
                         </label>
                         <div className="grid grid-cols-3 gap-1">
@@ -607,7 +647,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                         </div>
                       </div>
 
-                      <div>
+                      <div className="sm:col-span-2">
                         <label className="text-[11px] font-medium text-slate-400 block mb-1">
                           Focus Duration
                         </label>

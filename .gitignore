@@ -12,6 +12,7 @@ src-tauri/gen/
 # Vite / Frontend build output
 dist/
 dist_old/
+dist_root_*/
 dist-isolation/
 build/
 .output/

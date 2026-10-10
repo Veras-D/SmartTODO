@@ -45,8 +45,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
   const { 
     tasks, 
     createOrUpdateTask, 
-    deleteTask, 
-    startTaskDirectly 
+    deleteTask 
   } = useTaskContext();
 
   const inboxTasks = tasks.filter(t => t.status === 'inbox');
@@ -162,30 +161,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
     // The current task is removed from inboxTasks, so current index naturally points to next task
   };
 
-  // 4. Start Now: save details and immediately begin focus
-  const handleStartNow = () => {
-    if (!currentTask) return;
-    createOrUpdateTask({
-      id: currentTask.id,
-      title: title.trim() || currentTask.title,
-      nextAction: nextAction.trim() || undefined,
-      definitionOfDone: definitionOfDone.trim() || undefined,
-      gtdContext,
-      recurrence: recurrence !== 'none' ? recurrence : undefined,
-      importance,
-      energyLevel,
-      estimatedMinutes,
-      blockers,
-      status: 'ready'
-    });
-    startTaskDirectly(currentTask.id);
-    if (onStartFocus) {
-      onStartFocus();
-    }
-    onClose();
-  };
-
-  // 5. Delete raw task
+  // 4. Delete raw task
   const handleDelete = () => {
     if (!currentTask) return;
     soundManager.playSkipSound();

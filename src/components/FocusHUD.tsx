@@ -8,7 +8,7 @@ import {
   Square, 
   CheckSquare,
   Sparkles,
-  ShieldAlert
+  Plus
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 
@@ -27,12 +27,15 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
     isRolling, 
     unblockedReadyTasks, 
     filter, 
-    setFilter 
+    setFilter,
+    addQuickTask,
+    createOrUpdateTask
   } = useTaskContext();
 
   const [showSkipOptions, setShowSkipOptions] = useState(false);
   const [blockerInput, setBlockerInput] = useState('');
   const [isAddingBlocker, setIsAddingBlocker] = useState(false);
+  const [inlineTaskTitle, setInlineTaskTitle] = useState('');
 
   // Keyboard shortcuts: Space to roll, Enter to complete
   useEffect(() => {
@@ -40,7 +43,7 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
         return;
       }
-      if (e.code === 'Space' && !isRolling) {
+      if (e.code === 'Space' && !isRolling && unblockedReadyTasks.length > 0) {
         e.preventDefault();
         rollRandomTask();
       } else if (e.code === 'Enter' && activeTask) {
@@ -50,7 +53,7 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTask, isRolling, rollRandomTask, completeActiveTask]);
+  }, [activeTask, isRolling, unblockedReadyTasks.length, rollRandomTask, completeActiveTask]);
 
   // Reset skip options on task change
   useEffect(() => {
@@ -74,41 +77,79 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
     }, 120);
   };
 
+  const handleInlineAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inlineTaskTitle.trim()) return;
+    const task = addQuickTask(inlineTaskTitle.trim());
+    createOrUpdateTask({
+      id: task.id,
+      title: task.title,
+      status: 'ready'
+    });
+    setInlineTaskTitle('');
+  };
+
   return (
     <div className="max-w-2xl mx-auto py-12 px-4 flex flex-col items-center justify-center min-h-[calc(100vh-140px)]">
       
-      {/* 1. Idle View: What should I do now? */}
+      {/* 1. Idle View */}
       {!activeTask ? (
         <div className="w-full flex flex-col items-center text-center animate-fade-in">
           
-          <button
-            onClick={rollRandomTask}
-            disabled={isRolling || unblockedReadyTasks.length === 0}
-            className={`w-full max-w-sm p-10 rounded-3xl bg-slate-900 border border-slate-800 text-white shadow-2xl flex flex-col items-center justify-center gap-4 transition-all duration-200 active:scale-95 ${
-              unblockedReadyTasks.length === 0 
-                ? 'opacity-40 cursor-not-allowed' 
-                : 'hover:border-indigo-500/60 hover:bg-slate-900/90 hover:scale-105'
-            }`}
-          >
-            <div className={`w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center ${isRolling ? 'animate-spin' : ''}`}>
-              <Dices className="w-9 h-9" />
-            </div>
+          {unblockedReadyTasks.length === 0 ? (
+            /* Clean Empty State: Add first task directly here */
+            <div className="w-full max-w-md p-8 rounded-3xl bg-slate-900 border border-slate-800 text-center shadow-xl">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4">
+                <Dices className="w-7 h-7" />
+              </div>
+              <h2 className="text-lg font-bold text-white mb-1">Your Focus Deck is Empty</h2>
+              <p className="text-xs text-slate-400 mb-5">
+                Add a task below to start your focus session.
+              </p>
 
-            <div>
-              <span className="text-xl font-bold text-white block">
-                {isRolling ? 'Picking...' : 'What should I do now?'}
-              </span>
-              <span className="text-xs text-slate-400 mt-1 block">
-                Click or press Space
-              </span>
+              <form onSubmit={handleInlineAdd} className="flex gap-2">
+                <input
+                  type="text"
+                  value={inlineTaskTitle}
+                  onChange={(e) => setInlineTaskTitle(e.target.value)}
+                  placeholder="What do you need to do? (Press Enter)"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  disabled={!inlineTaskTitle.trim()}
+                  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow disabled:opacity-40 transition"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </form>
             </div>
-          </button>
+          ) : (
+            /* Normal Idle Roll Button */
+            <>
+              <button
+                onClick={rollRandomTask}
+                disabled={isRolling}
+                className="w-full max-w-sm p-10 rounded-3xl bg-slate-900 border border-slate-800 text-white shadow-2xl flex flex-col items-center justify-center gap-4 transition-all duration-200 active:scale-95 hover:border-indigo-500/60 hover:bg-slate-900/90 hover:scale-105"
+              >
+                <div className={`w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center ${isRolling ? 'animate-spin' : ''}`}>
+                  <Dices className="w-9 h-9" />
+                </div>
 
-          {/* Calming, subtle footer info */}
-          <div className="mt-6 flex flex-col items-center gap-2 text-xs text-slate-400">
-            {unblockedReadyTasks.length > 0 ? (
-              <div className="flex items-center gap-3">
-                <span>{unblockedReadyTasks.length} tasks ready</span>
+                <div>
+                  <span className="text-xl font-bold text-white block">
+                    {isRolling ? 'Picking...' : 'What should I do now?'}
+                  </span>
+                  <span className="text-xs text-slate-400 mt-1 block">
+                    Click or press Space
+                  </span>
+                </div>
+              </button>
+
+              {/* Calming status indicator */}
+              <div className="mt-6 flex items-center gap-3 text-xs text-slate-400">
+                <span>{unblockedReadyTasks.length} {unblockedReadyTasks.length === 1 ? 'task' : 'tasks'} ready</span>
                 <span>•</span>
                 <button
                   onClick={() => setFilter(filter === 'low_energy' ? 'all' : 'low_energy')}
@@ -122,18 +163,8 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                   <span>{filter === 'low_energy' ? 'Low energy active' : 'Low energy?'}</span>
                 </button>
               </div>
-            ) : (
-              <div className="text-center">
-                <p className="text-slate-400">All ready tasks are completed!</p>
-                <button
-                  onClick={onOpenTasksTab}
-                  className="mt-2 text-indigo-400 hover:text-indigo-300 font-semibold underline"
-                >
-                  View your task list
-                </button>
-              </div>
-            )}
-          </div>
+            </>
+          )}
 
         </div>
       ) : (

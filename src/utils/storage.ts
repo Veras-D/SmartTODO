@@ -1,97 +1,41 @@
 import { Task } from '../types/task';
 
-const STORAGE_KEY = 'smart_todo_tasks_v1';
+const STORAGE_KEY = 'smart_todo_tasks_v2';
+const LEGACY_STORAGE_KEY = 'smart_todo_tasks_v1';
 const SOUND_SETTING_KEY = 'smart_todo_sound_enabled';
-
-export const INITIAL_SEED_TASKS: Task[] = [
-  {
-    id: 'seed-1',
-    title: 'Drink a fresh glass of water',
-    definitionOfDone: 'Glass is finished and placed in sink',
-    notes: 'Hydration helps reset executive focus',
-    status: 'ready',
-    energyLevel: 'low',
-    estimatedMinutes: 2,
-    microSteps: [
-      { id: 's1-1', title: 'Walk to kitchen', completed: false },
-      { id: 's1-2', title: 'Fill glass', completed: false },
-      { id: 's1-3', title: 'Drink slowly', completed: false }
-    ],
-    blockers: [],
-    frictionBusterStep: 'Just take 3 sips right now',
-    skipCount: 0,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'seed-2',
-    title: 'Import your Google Keep notes into SmartTODO',
-    definitionOfDone: 'Notes pasted and converted into inbox items',
-    notes: 'Use the Google Keep Importer in the top menu to clear your notes graveyard',
-    status: 'ready',
-    energyLevel: 'low',
-    estimatedMinutes: 5,
-    microSteps: [
-      { id: 's2-1', title: 'Open Google Keep tab', completed: false },
-      { id: 's2-2', title: 'Copy task lines', completed: false },
-      { id: 's2-3', title: 'Paste into SmartTODO Importer', completed: false }
-    ],
-    blockers: [],
-    frictionBusterStep: 'Just copy 1 note from Google Keep',
-    skipCount: 0,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'seed-3',
-    title: 'Clean desk surface',
-    definitionOfDone: 'Clear 80% of clutter off the main tabletop',
-    notes: 'Reduces visual noise and distraction',
-    status: 'ready',
-    energyLevel: 'medium',
-    estimatedMinutes: 10,
-    microSteps: [
-      { id: 's3-1', title: 'Put away empty cups and wrappers', completed: false },
-      { id: 's3-2', title: 'Stack notebook and pens', completed: false }
-    ],
-    blockers: [],
-    frictionBusterStep: 'Just throw away one wrapper or empty cup',
-    skipCount: 0,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: 'seed-4',
-    title: 'Review project milestones',
-    definitionOfDone: 'All 3 milestones have dates assigned',
-    notes: 'Blocked until dependencies are gathered',
-    status: 'blocked',
-    energyLevel: 'high',
-    estimatedMinutes: 30,
-    microSteps: [],
-    blockers: [
-      { id: 'b4-1', text: 'Waiting for team feedback on draft', resolved: false }
-    ],
-    skipCount: 0,
-    createdAt: new Date().toISOString()
-  }
-];
 
 export function loadStoredTasks(): Task[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    // Check current storage key
+    let raw = localStorage.getItem(STORAGE_KEY);
+    
+    // Fallback to check legacy key if v2 not found
     if (!raw) {
-      saveTasksToStorage(INITIAL_SEED_TASKS);
-      return INITIAL_SEED_TASKS;
+      raw = localStorage.getItem(LEGACY_STORAGE_KEY);
     }
+    
+    if (!raw) {
+      return [];
+    }
+    
     const parsed = JSON.parse(raw) as Task[];
-    return Array.isArray(parsed) ? parsed : INITIAL_SEED_TASKS;
+    if (!Array.isArray(parsed)) return [];
+    
+    // Strictly filter out any previous seed tasks
+    const userOnlyTasks = parsed.filter(t => !t.id.startsWith('seed-'));
+    saveTasksToStorage(userOnlyTasks);
+    return userOnlyTasks;
   } catch (error) {
     console.error('Failed to load tasks from localStorage:', error);
-    return INITIAL_SEED_TASKS;
+    return [];
   }
 }
 
 export function saveTasksToStorage(tasks: Task[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    // Filter out any seed tasks
+    const userOnlyTasks = tasks.filter(t => !t.id.startsWith('seed-'));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(userOnlyTasks));
   } catch (error) {
     console.error('Failed to save tasks to localStorage:', error);
   }

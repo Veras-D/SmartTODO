@@ -12,7 +12,8 @@ import {
   Repeat,
   Inbox,
   Play,
-  Clock
+  Clock,
+  Link
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { PomodoroTimer } from './PomodoroTimer';
@@ -43,6 +44,10 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
     startTaskDirectly,
     moveToInbox
   } = useTaskContext();
+
+  const tasksBlockedByActive = activeTask
+    ? tasks.filter(t => t.blockers.some(b => !b.resolved && b.blockedByTaskId === activeTask.id))
+    : [];
 
   const inboxTasks = tasks.filter(t => t.status === 'inbox');
 
@@ -297,6 +302,15 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                 <span>Current Mission</span>
               </span>
               <div className="flex items-center gap-2">
+                {tasksBlockedByActive.length > 0 && (
+                  <span 
+                    className="text-[11px] text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-800/40 flex items-center gap-1 font-medium"
+                    title={`Completing this task will unblock: ${tasksBlockedByActive.map(t => t.title).join(', ')}`}
+                  >
+                    <Link className="w-3 h-3 text-amber-400" />
+                    <span>Blocks {tasksBlockedByActive.length} {tasksBlockedByActive.length === 1 ? 'task' : 'tasks'}</span>
+                  </span>
+                )}
                 {activeTask.estimatedMinutes && (
                   <span className="text-slate-500">
                     ~{activeTask.estimatedMinutes} mins

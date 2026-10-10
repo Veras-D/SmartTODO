@@ -10,11 +10,13 @@ import {
   Save, 
   X, 
   Inbox,
-  AlertCircle
+  AlertCircle,
+  Link
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Task, EnergyLevel, GTDContext, RecurrenceInterval, Blocker } from '../types/task';
 import { generateId } from '../utils/storage';
+import { getEligibleBlockerCandidates } from '../utils/taskDependencies';
 import { CustomSelect, SelectOption } from './CustomSelect';
 import { soundManager } from '../utils/sound';
 
@@ -63,6 +65,12 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
   const [estimatedMinutes, setEstimatedMinutes] = useState<number>(25);
   const [newBlockerText, setNewBlockerText] = useState('');
   const [blockers, setBlockers] = useState<Blocker[]>([]);
+
+  const effectiveCurrentTask: Task | undefined = currentTask ? {
+    ...currentTask,
+    blockers
+  } : undefined;
+  const eligibleCandidates = effectiveCurrentTask ? getEligibleBlockerCandidates(effectiveCurrentTask, tasks) : [];
 
   // Sync form when currentTask changes
   useEffect(() => {
@@ -367,16 +375,24 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
         </div>
 
         {/* 4. Blockers (Optional) */}
-        <div>
-          <label className="text-[11px] font-medium text-rose-400/90 block mb-1">
-            Blockers / Waiting For (Optional)
-          </label>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-[11px] font-medium text-rose-400/90">
+              Blockers / Dependencies (Optional)
+            </label>
+            {eligibleCandidates.length > 0 && (
+              <span className="text-[10px] text-slate-500">
+                Custom text or link other tasks
+              </span>
+            )}
+          </div>
+
           <div className="flex gap-2">
             <input
               type="text"
               value={newBlockerText}
               onChange={(e) => setNewBlockerText(e.target.value)}
-              placeholder="Waiting on person, missing asset..."
+              placeholder="Custom blocker (e.g. Waiting on Sarah)..."
               className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-700/80 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -390,19 +406,58 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
               onClick={addBlocker}
               className="px-3.5 py-2 rounded-xl bg-rose-950/40 text-rose-300 border border-rose-800/80 hover:bg-rose-900/40 text-xs font-medium transition shrink-0"
             >
-              + Add
+              + Add Text
             </button>
           </div>
+
+          {eligibleCandidates.length > 0 && (
+            <div className="flex items-center gap-2 pt-0.5">
+              <span className="text-[11px] text-slate-400 shrink-0 flex items-center gap-1">
+                <Link className="w-3 h-3 text-rose-400" />
+                <span>Or blocked by:</span>
+              </span>
+              <div className="flex-1">
+                <CustomSelect
+                  value=""
+                  onChange={(selectedId) => {
+                    if (!selectedId) return;
+                    const cand = tasks.find(t => t.id === selectedId);
+                    if (cand) {
+                      setBlockers(prev => [
+                        ...prev,
+                        { id: generateId(), text: `Waiting for: ${cand.title}`, blockedByTaskId: cand.id, resolved: false }
+                      ]);
+                    }
+                  }}
+                  options={[
+                    { value: '', label: 'Select task that must finish first...' },
+                    ...eligibleCandidates.map(c => ({
+                      value: c.id,
+                      label: c.title,
+                      icon: <span className="text-[11px]">⏳</span>
+                    }))
+                  ]}
+                />
+              </div>
+            </div>
+          )}
 
           {blockers.length > 0 && (
             <div className="mt-2 space-y-1">
               {blockers.map(b => (
                 <div key={b.id} className="flex items-center justify-between text-xs text-rose-300 bg-rose-950/20 px-2.5 py-1.5 rounded-lg border border-rose-900/30">
-                  <span>🚫 {b.text}</span>
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1 truncate">
+                    <span>🚫 {b.text}</span>
+                    {b.blockedByTaskId && (
+                      <span className="text-[9px] bg-rose-900/40 text-rose-200 px-1.5 py-0.2 rounded border border-rose-800/40 shrink-0">
+                        Linked Task
+                      </span>
+                    )}
+                  </div>
                   <button
                     type="button"
                     onClick={() => removeBlocker(b.id)}
-                    className="text-slate-400 hover:text-rose-400 text-[11px]"
+                    className="text-slate-400 hover:text-rose-400 text-xs px-1 ml-2"
                   >
                     ×
                   </button>

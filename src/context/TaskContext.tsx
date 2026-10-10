@@ -10,6 +10,7 @@ import {
   calculateNextDueDate 
 } from '../utils/storage';
 import { soundManager } from '../utils/sound';
+import { unblockDependentTasks } from '../utils/taskDependencies';
 
 interface TaskContextType {
   tasks: Task[];
@@ -256,27 +257,32 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       colors: ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6']
     });
 
-    setTasks(prev => prev.map(t => {
-      if (t.id === activeTask.id) {
-        if (t.recurrence && t.recurrence !== 'none') {
-          const nextDue = calculateNextDueDate(t.recurrence);
-          return {
-            ...t,
-            status: 'ready' as TaskStatus,
-            nextDueDate: nextDue,
-            lastCompletedAt: new Date().toISOString(),
-            microSteps: t.microSteps.map(s => ({ ...s, completed: false }))
-          };
-        } else {
-          return {
-            ...t,
-            status: 'completed' as TaskStatus,
-            completedAt: new Date().toISOString()
-          };
+    setTasks(prev => {
+      const updated = prev.map(t => {
+        if (t.id === activeTask.id) {
+          if (t.recurrence && t.recurrence !== 'none') {
+            const nextDue = calculateNextDueDate(t.recurrence);
+            return {
+              ...t,
+              status: 'ready' as TaskStatus,
+              nextDueDate: nextDue,
+              lastCompletedAt: new Date().toISOString(),
+              microSteps: t.microSteps.map(s => ({ ...s, completed: false }))
+            };
+          } else {
+            return {
+              ...t,
+              status: 'completed' as TaskStatus,
+              completedAt: new Date().toISOString()
+            };
+          }
         }
-      }
-      return t;
-    }));
+        return t;
+      });
+
+      // Automatically unblock tasks that were waiting for this task!
+      return unblockDependentTasks(activeTask.id, updated);
+    });
 
     setActiveTaskId(null);
   }, [activeTask]);
@@ -402,7 +408,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTasks(prev => {
       const existing = prev.find(t => t.id === taskData.id);
       if (existing) {
-        return prev.map(t => t.id === taskData.id ? { ...t, ...taskData } : t);
+        const updated = prev.map(t => t.id === taskData.id ? { ...t, ...taskData } : t);
+        if (taskData.status === 'completed' && taskData.id) {
+          return unblockDependentTasks(taskData.id, updated);
+        }
+        return updated;
       } else {
         const newTask: Task = {
           id: generateId(),
@@ -425,7 +435,10 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Delete Task
   const deleteTask = useCallback((id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
+    setTasks(prev => {
+      const remaining = prev.filter(t => t.id !== id);
+      return unblockDependentTasks(id, remaining);
+    });
     if (activeTaskId === id) {
       setActiveTaskId(null);
     }

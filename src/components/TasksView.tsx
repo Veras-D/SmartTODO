@@ -17,11 +17,13 @@ import {
   CheckSquare,
   Square,
   Plus,
-  Repeat
+  Repeat,
+  Link
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Task, EnergyLevel, GTDContext, Blocker, RecurrenceInterval } from '../types/task';
 import { generateId } from '../utils/storage';
+import { getEligibleBlockerCandidates } from '../utils/taskDependencies';
 import { CustomSelect, SelectOption } from './CustomSelect';
 import { InboxRefinery } from './InboxRefinery';
 
@@ -132,6 +134,33 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
     const updated: Blocker[] = [...task.blockers, { id: generateId(), text: newBlockerText.trim(), resolved: false }];
     createOrUpdateTask({ id: task.id, title: task.title, blockers: updated, status: 'blocked' });
     setNewBlockerText('');
+  };
+
+  const addTaskDependencyBlocker = (task: Task, blockingTaskId: string) => {
+    const blockingTask = tasks.find(t => t.id === blockingTaskId);
+    if (!blockingTask) return;
+    const updated: Blocker[] = [
+      ...task.blockers,
+      {
+        id: generateId(),
+        text: `Waiting for: ${blockingTask.title}`,
+        blockedByTaskId: blockingTask.id,
+        resolved: false
+      }
+    ];
+    createOrUpdateTask({ id: task.id, title: task.title, blockers: updated, status: 'blocked' });
+  };
+
+  const removeBlockerFromTask = (taskId: string, blockerId: string) => {
+    const target = tasks.find(t => t.id === taskId);
+    if (!target) return;
+    const updated = target.blockers.filter(b => b.id !== blockerId);
+    const hasUnresolved = updated.some(b => !b.resolved);
+    createOrUpdateTask({
+      ...target,
+      blockers: updated,
+      status: hasUnresolved ? 'blocked' : 'ready'
+    });
   };
 
   const resolveBlocker = (taskId: string, blockerId: string) => {
@@ -322,6 +351,9 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
         ) : (
           filteredTasks.map(task => {
             const isClarifying = clarifyingTaskId === task.id;
+            const eligibleCandidates = getEligibleBlockerCandidates(task, tasks);
+            const tasksBlockedByThis = tasks.filter(t => t.blockers.some(b => !b.resolved && b.blockedByTaskId === task.id));
+
             return (
               <div
                 key={task.id}
@@ -355,6 +387,15 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                       {task.status === 'blocked' && (
                         <span className="text-[10px] text-rose-400 bg-rose-950/40 px-2 py-0.5 rounded-md border border-rose-900/40">
                           Blocked
+                        </span>
+                      )}
+                      {tasksBlockedByThis.length > 0 && (
+                        <span 
+                          className="text-[10px] text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-800/40 flex items-center gap-1 font-medium"
+                          title={`This task is currently blocking: ${tasksBlockedByThis.map(t => t.title).join(', ')}`}
+                        >
+                          <Link className="w-3 h-3 text-amber-400" />
+                          <span>Blocks {tasksBlockedByThis.length} {tasksBlockedByThis.length === 1 ? 'task' : 'tasks'}</span>
                         </span>
                       )}
                       {task.recurrence && task.recurrence !== 'none' && (
@@ -439,18 +480,41 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
 
                 {/* Show Blockers */}
                 {task.blockers && task.blockers.length > 0 && !isClarifying && (
-                  <div className="mt-2.5 pt-2 border-t border-slate-800/60 text-xs">
+                  <div className="mt-2.5 pt-2 border-t border-slate-800/60 space-y-1.5 text-xs">
                     {task.blockers.map(b => (
-                      <div key={b.id} className="flex items-center justify-between text-[11px] text-rose-300">
-                        <span>🚫 {b.text}</span>
-                        {!b.resolved && (
+                      <div 
+                        key={b.id} 
+                        className={`flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-lg border transition ${
+                          b.resolved 
+                            ? 'text-slate-500 bg-slate-950/40 border-slate-800/40 line-through' 
+                            : 'text-rose-300 bg-rose-950/20 border-rose-900/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1 truncate">
+                          <span>{b.resolved ? '✓' : '🚫'} {b.text}</span>
+                          {b.blockedByTaskId && (
+                            <span className="text-[9px] bg-rose-900/40 text-rose-200 px-1.5 py-0.2 rounded border border-rose-800/40 shrink-0 font-medium">
+                              Linked Task
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 ml-2 shrink-0">
+                          {!b.resolved && (
+                            <button
+                              onClick={() => resolveBlocker(task.id, b.id)}
+                              className="text-emerald-400 hover:text-emerald-300 hover:underline font-semibold text-[10px] transition"
+                            >
+                              Unblock ✓
+                            </button>
+                          )}
                           <button
-                            onClick={() => resolveBlocker(task.id, b.id)}
-                            className="text-emerald-400 hover:underline font-semibold ml-2"
+                            onClick={() => removeBlockerFromTask(task.id, b.id)}
+                            className="text-slate-400 hover:text-rose-400 text-xs px-1 transition"
+                            title="Remove blocker"
                           >
-                            Unblock ✓
+                            ×
                           </button>
-                        )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -567,16 +631,24 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                     </div>
 
                     {/* Blockers / Waiting For */}
-                    <div>
-                      <label className="text-[11px] font-medium text-rose-400/90 block mb-1">
-                        Blockers / Waiting For (Optional)
-                      </label>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-medium text-rose-400/90">
+                          Blockers / Dependencies (Optional)
+                        </label>
+                        {eligibleCandidates.length > 0 && (
+                          <span className="text-[10px] text-slate-500">
+                            Custom text or link another task
+                          </span>
+                        )}
+                      </div>
+
                       <div className="flex gap-2">
                         <input
                           type="text"
                           value={newBlockerText}
                           onChange={(e) => setNewBlockerText(e.target.value)}
-                          placeholder="Waiting on person, missing asset..."
+                          placeholder="Custom blocker (e.g. Waiting on Sarah)..."
                           className="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700/80 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
@@ -590,9 +662,78 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                           onClick={() => addBlockerToTask(task)}
                           className="px-3.5 py-2 rounded-xl bg-rose-950/40 text-rose-300 border border-rose-800/80 hover:bg-rose-900/40 text-xs font-medium transition shrink-0"
                         >
-                          + Add
+                          + Add Text
                         </button>
                       </div>
+
+                      {eligibleCandidates.length > 0 && (
+                        <div className="flex items-center gap-2 pt-0.5">
+                          <span className="text-[11px] text-slate-400 shrink-0 flex items-center gap-1">
+                            <Link className="w-3 h-3 text-rose-400" />
+                            <span>Or blocked by:</span>
+                          </span>
+                          <div className="flex-1">
+                            <CustomSelect
+                              value=""
+                              onChange={(selectedId) => {
+                                if (!selectedId) return;
+                                addTaskDependencyBlocker(task, selectedId);
+                              }}
+                              options={[
+                                { value: '', label: 'Select task that must finish first...' },
+                                ...eligibleCandidates.map(c => ({
+                                  value: c.id,
+                                  label: c.title,
+                                  icon: <span className="text-[11px]">⏳</span>
+                                }))
+                              ]}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {task.blockers && task.blockers.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {task.blockers.map(b => (
+                            <div 
+                              key={b.id} 
+                              className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg border transition ${
+                                b.resolved 
+                                  ? 'text-slate-500 bg-slate-950/40 border-slate-800/40 line-through' 
+                                  : 'text-rose-300 bg-rose-950/20 border-rose-900/30'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1 truncate">
+                                <span>{b.resolved ? '✓' : '🚫'} {b.text}</span>
+                                {b.blockedByTaskId && (
+                                  <span className="text-[9px] bg-rose-900/40 text-rose-200 px-1.5 py-0.2 rounded border border-rose-800/40 shrink-0 font-medium">
+                                    Linked Task
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 ml-2 shrink-0">
+                                {!b.resolved && (
+                                  <button
+                                    type="button"
+                                    onClick={() => resolveBlocker(task.id, b.id)}
+                                    className="text-emerald-400 hover:text-emerald-300 hover:underline font-semibold text-[10px] transition"
+                                  >
+                                    Unblock ✓
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => removeBlockerFromTask(task.id, b.id)}
+                                  className="text-slate-400 hover:text-rose-400 text-xs px-1 transition"
+                                  title="Remove blocker"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Clarifier Actions */}

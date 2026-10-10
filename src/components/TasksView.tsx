@@ -16,10 +16,11 @@ import {
   Dices,
   CheckSquare,
   Square,
-  Plus
+  Plus,
+  Repeat
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
-import { Task, EnergyLevel, GTDContext, Blocker } from '../types/task';
+import { Task, EnergyLevel, GTDContext, Blocker, RecurrenceInterval } from '../types/task';
 import { generateId } from '../utils/storage';
 
 interface TasksViewProps {
@@ -45,6 +46,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
   const [definitionOfDone, setDefinitionOfDone] = useState('');
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel>('medium');
   const [estimatedMinutes, setEstimatedMinutes] = useState<number>(25);
+  const [recurrence, setRecurrence] = useState<RecurrenceInterval>('none');
   const [newStepText, setNewStepText] = useState('');
   const [newBlockerText, setNewBlockerText] = useState('');
 
@@ -73,6 +75,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
     setDefinitionOfDone(task.definitionOfDone || '');
     setEnergyLevel(task.energyLevel || 'medium');
     setEstimatedMinutes(task.estimatedMinutes || 25);
+    setRecurrence(task.recurrence || 'none');
     setNewStepText('');
     setNewBlockerText('');
   };
@@ -90,6 +93,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
       definitionOfDone: definitionOfDone.trim() || undefined,
       energyLevel,
       estimatedMinutes,
+      recurrence: recurrence !== 'none' ? recurrence : undefined,
       status: updatedStatus
     });
 
@@ -279,6 +283,18 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                           Blocked
                         </span>
                       )}
+                      {task.recurrence && task.recurrence !== 'none' && (
+                        <span className="text-[10px] text-sky-300 bg-sky-950/40 px-2 py-0.5 rounded-md border border-sky-900/40 flex items-center gap-1">
+                          <Repeat className="w-3 h-3 text-sky-400" />
+                          <span>
+                            {task.recurrence === 'every_2_days' && 'Every 2 days'}
+                            {task.recurrence === 'daily' && 'Daily'}
+                            {task.recurrence === 'weekly' && 'Weekly'}
+                            {task.recurrence === 'monthly' && 'Monthly'}
+                            {task.nextDueDate && ` (Due ${task.nextDueDate})`}
+                          </span>
+                        </span>
+                      )}
                     </div>
 
                     <h3 className={`text-base font-semibold truncate ${
@@ -457,10 +473,40 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
                       </div>
                     </div>
 
-                    {/* 5. Blockers / Waiting For */}
+                    {/* 5. Recurrence Rule */}
+                    <div>
+                      <label className="text-slate-300 font-medium block mb-1 flex items-center gap-1.5">
+                        <Repeat className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>6. Recurrence (Repeating task schedule)</span>
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                        {[
+                          { id: 'none', label: 'No Repeat' },
+                          { id: 'daily', label: 'Daily' },
+                          { id: 'every_2_days', label: 'Every 2 days' },
+                          { id: 'weekly', label: 'Weekly' },
+                          { id: 'monthly', label: 'Monthly' }
+                        ].map(opt => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setRecurrence(opt.id as RecurrenceInterval)}
+                            className={`py-1.5 px-2 rounded-xl border text-[11px] font-medium transition ${
+                              recurrence === opt.id
+                                ? 'bg-indigo-600 text-white border-indigo-500 shadow'
+                                : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 6. Blockers / Waiting For */}
                     <div>
                       <label className="text-rose-300 font-medium block mb-1">
-                        6. Blockers / Waiting For (Optional)
+                        7. Blockers / Waiting For (Optional)
                       </label>
                       <div className="flex gap-2">
                         <input

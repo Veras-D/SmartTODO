@@ -11,6 +11,8 @@ export type TaskStatus =
 
 export type GTDContext = '@computer' | '@phone' | '@errands' | '@home' | '@anywhere';
 
+export type RecurrenceInterval = 'none' | 'daily' | 'every_2_days' | 'weekly' | 'monthly';
+
 export interface MicroStep {
   id: string;
   title: string;
@@ -41,6 +43,9 @@ export interface Task {
   skipCount: number;
   lastSkippedReason?: 'too_tired' | 'blocked' | 'not_now' | 'other';
   snoozedUntil?: string;
+  recurrence?: RecurrenceInterval; // 'none' | 'daily' | 'every_2_days' | 'weekly' | 'monthly'
+  nextDueDate?: string;            // YYYY-MM-DD
+  lastCompletedAt?: string;
   createdAt: string;
   completedAt?: string;
   archivedAt?: string;

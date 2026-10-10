@@ -8,7 +8,8 @@ import {
   Square, 
   CheckSquare,
   Sparkles,
-  Plus
+  Plus,
+  Repeat
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { PomodoroTimer } from './PomodoroTimer';
@@ -180,11 +181,24 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                 <span>Current Mission</span>
               </span>
-              {activeTask.estimatedMinutes && (
-                <span className="text-slate-500">
-                  ~{activeTask.estimatedMinutes} mins
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {activeTask.estimatedMinutes && (
+                  <span className="text-slate-500">
+                    ~{activeTask.estimatedMinutes} mins
+                  </span>
+                )}
+                {activeTask.recurrence && activeTask.recurrence !== 'none' && (
+                  <span className="text-[11px] text-sky-400 bg-sky-950/40 px-2 py-0.5 rounded-md border border-sky-900/40 flex items-center gap-1">
+                    <Repeat className="w-3 h-3" />
+                    <span>
+                      {activeTask.recurrence === 'every_2_days' && 'Every 2 days'}
+                      {activeTask.recurrence === 'daily' && 'Daily'}
+                      {activeTask.recurrence === 'weekly' && 'Weekly'}
+                      {activeTask.recurrence === 'monthly' && 'Monthly'}
+                    </span>
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Big readable Task Title */}

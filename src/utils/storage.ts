@@ -62,3 +62,18 @@ export function saveSoundSetting(enabled: boolean): void {
 export function generateId(): string {
   return 'task-' + Math.random().toString(36).substring(2, 9) + '-' + Date.now().toString(36);
 }
+
+// Compute the next due date for recurring tasks
+export function calculateNextDueDate(recurrence: import('../types/task').RecurrenceInterval): string {
+  const date = new Date();
+  if (recurrence === 'daily') {
+    date.setDate(date.getDate() + 1);
+  } else if (recurrence === 'every_2_days') {
+    date.setDate(date.getDate() + 2);
+  } else if (recurrence === 'weekly') {
+    date.setDate(date.getDate() + 7);
+  } else if (recurrence === 'monthly') {
+    date.setMonth(date.getMonth() + 1);
+  }
+  return date.toISOString().split('T')[0];
+}

@@ -6,7 +6,8 @@ import {
   saveTasksToStorage, 
   loadSoundSetting, 
   saveSoundSetting, 
-  generateId 
+  generateId,
+  calculateNextDueDate 
 } from '../utils/storage';
 import { soundManager } from '../utils/sound';
 
@@ -73,6 +74,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Must NOT be snoozed for today
       if (t.snoozedUntil && t.snoozedUntil.startsWith(today)) return false;
 
+      // Must be due today or earlier if recurring
+      if (t.nextDueDate && t.nextDueDate > today) return false;
+
       // Must have zero unresolved blockers
       const hasUnresolvedBlockers = t.blockers.some(b => !b.resolved);
       if (hasUnresolvedBlockers) return false;
@@ -81,7 +85,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, [tasks]);
 
-  // Tasks in inbox waiting for SMART-ification
+  // Tasks in inbox waiting for GTD clarification
   const inboxTasks = useMemo(() => {
     return tasks.filter(t => t.status === 'inbox');
   }, [tasks]);
@@ -91,10 +95,13 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return tasks.filter(t => t.status === 'cold_storage');
   }, [tasks]);
 
-  // Completed today counter for dopamine progress
+  // Completed today counter for dopamine progress (includes recurring completions)
   const completedTodayCount = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    return tasks.filter(t => t.status === 'completed' && t.completedAt && t.completedAt.startsWith(today)).length;
+    return tasks.filter(t => 
+      (t.status === 'completed' && t.completedAt && t.completedAt.startsWith(today)) ||
+      (t.lastCompletedAt && t.lastCompletedAt.startsWith(today))
+    ).length;
   }, [tasks]);
 
   // Get current active task
@@ -175,11 +182,22 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setTasks(prev => prev.map(t => {
       if (t.id === activeTask.id) {
-        return {
-          ...t,
-          status: 'completed' as TaskStatus,
-          completedAt: new Date().toISOString()
-        };
+        if (t.recurrence && t.recurrence !== 'none') {
+          const nextDue = calculateNextDueDate(t.recurrence);
+          return {
+            ...t,
+            status: 'ready' as TaskStatus,
+            nextDueDate: nextDue,
+            lastCompletedAt: new Date().toISOString(),
+            microSteps: t.microSteps.map(s => ({ ...s, completed: false }))
+          };
+        } else {
+          return {
+            ...t,
+            status: 'completed' as TaskStatus,
+            completedAt: new Date().toISOString()
+          };
+        }
       }
       return t;
     }));

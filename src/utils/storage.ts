@@ -58,27 +58,6 @@ export function saveSoundSetting(enabled: boolean): void {
   }
 }
 
-// Parse Google Keep text dump (handles markdown checkboxes, bullets, or plain lines)
-export function parseGoogleKeepText(text: string): { title: string; notes?: string }[] {
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  const tasks: { title: string; notes?: string }[] = [];
-
-  for (const line of lines) {
-    // Strip checkbox formats like "- [ ]", "[ ]", "•", "-", "*", or numbers "1."
-    const cleaned = line
-      .replace(/^[-*•]\s*(\[[ xX]?\]\s*)?/, '')
-      .replace(/^\[[ xX]?\]\s*/, '')
-      .replace(/^\d+[\.\)]\s*/, '')
-      .trim();
-
-    if (cleaned.length > 0) {
-      tasks.push({ title: cleaned });
-    }
-  }
-
-  return tasks;
-}
-
 // Generate unique ID
 export function generateId(): string {
   return 'task-' + Math.random().toString(36).substring(2, 9) + '-' + Date.now().toString(36);

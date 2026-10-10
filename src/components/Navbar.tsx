@@ -6,7 +6,6 @@ import {
   MoreVertical, 
   Volume2, 
   VolumeX, 
-  FileDown, 
   AlertOctagon, 
   Download,
   CheckCircle2
@@ -17,7 +16,6 @@ interface NavbarProps {
   currentTab: 'focus' | 'tasks';
   setCurrentTab: (tab: 'focus' | 'tasks') => void;
   onOpenQuickCapture: () => void;
-  onOpenKeepImporter: () => void;
   onOpenBankruptcy: () => void;
 }
 
@@ -25,7 +23,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentTab,
   setCurrentTab,
   onOpenQuickCapture,
-  onOpenKeepImporter,
   onOpenBankruptcy
 }) => {
   const { 
@@ -140,17 +137,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4 text-slate-500" />}
                   <span>{soundEnabled ? 'Mute Sounds' : 'Enable Sounds'}</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    onOpenKeepImporter();
-                    setIsMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-slate-300 hover:bg-slate-800 transition text-left"
-                >
-                  <FileDown className="w-4 h-4 text-amber-400" />
-                  <span>Import from Google Keep</span>
                 </button>
 
                 <button

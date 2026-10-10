@@ -4,7 +4,6 @@ import { Navbar } from './components/Navbar';
 import { FocusHUD } from './components/FocusHUD';
 import { TasksView } from './components/TasksView';
 import { QuickCaptureModal } from './components/QuickCaptureModal';
-import { GoogleKeepImporterModal } from './components/GoogleKeepImporterModal';
 import { BacklogBankruptcyModal } from './components/BacklogBankruptcyModal';
 
 const MainLayout: React.FC = () => {
@@ -12,7 +11,6 @@ const MainLayout: React.FC = () => {
   
   // Modals state
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
-  const [isKeepImporterOpen, setIsKeepImporterOpen] = useState(false);
   const [isBankruptcyOpen, setIsBankruptcyOpen] = useState(false);
 
   // Global hotkey: 'N' to open quick capture
@@ -38,7 +36,6 @@ const MainLayout: React.FC = () => {
         currentTab={currentTab}
         setCurrentTab={setCurrentTab}
         onOpenQuickCapture={() => setIsQuickCaptureOpen(true)}
-        onOpenKeepImporter={() => setIsKeepImporterOpen(true)}
         onOpenBankruptcy={() => setIsBankruptcyOpen(true)}
       />
 
@@ -51,16 +48,10 @@ const MainLayout: React.FC = () => {
         )}
       </main>
 
-      {/* Clean Modals for Quick Capture & Importers */}
+      {/* Clean Modals for Quick Capture & Reset */}
       <QuickCaptureModal
         isOpen={isQuickCaptureOpen}
         onClose={() => setIsQuickCaptureOpen(false)}
-      />
-
-      <GoogleKeepImporterModal
-        isOpen={isKeepImporterOpen}
-        onClose={() => setIsKeepImporterOpen(false)}
-        onImportComplete={() => setCurrentTab('tasks')}
       />
 
       <BacklogBankruptcyModal

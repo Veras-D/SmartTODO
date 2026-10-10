@@ -6,8 +6,7 @@ import {
   saveTasksToStorage, 
   loadSoundSetting, 
   saveSoundSetting, 
-  generateId, 
-  parseGoogleKeepText 
+  generateId 
 } from '../utils/storage';
 import { soundManager } from '../utils/sound';
 
@@ -31,7 +30,6 @@ interface TaskContextType {
   deleteTask: (id: string) => void;
   restoreFromColdStorage: (id: string) => void;
   declareBankruptcy: () => number;
-  importKeepNotes: (text: string) => number;
   
   // Filtered queries
   unblockedReadyTasks: Task[];
@@ -376,28 +374,6 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return count;
   }, [activeTask]);
 
-  // Import from Google Keep dump
-  const importKeepNotes = useCallback((text: string): number => {
-    const parsed = parseGoogleKeepText(text);
-    if (parsed.length === 0) return 0;
-
-    const newTasks: Task[] = parsed.map(item => ({
-      id: generateId(),
-      title: item.title,
-      notes: item.notes || '',
-      status: 'inbox',
-      energyLevel: 'medium',
-      estimatedMinutes: 15,
-      microSteps: [],
-      blockers: [],
-      skipCount: 0,
-      createdAt: new Date().toISOString()
-    }));
-
-    setTasks(prev => [...newTasks, ...prev]);
-    return newTasks.length;
-  }, []);
-
   return (
     <TaskContext.Provider
       value={{
@@ -418,7 +394,6 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteTask,
         restoreFromColdStorage,
         declareBankruptcy,
-        importKeepNotes,
         unblockedReadyTasks,
         inboxTasks,
         completedTodayCount,

@@ -302,7 +302,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
   }, []);
 
-  // Quick 1-line dump task into inbox (Google Keep speed)
+  // Quick 1-line dump task into inbox
   const addQuickTask = useCallback((title: string): Task => {
     soundManager.playRollTick(1.2);
     const newTask: Task = {

@@ -51,7 +51,7 @@ export const QuickCaptureModal: React.FC<QuickCaptureModalProps> = ({ isOpen, on
           <div>
             <h2 className="text-lg font-bold text-white">Quick Brain Dump</h2>
             <p className="text-xs text-slate-400">
-              Zero-friction capture (like Google Keep). Dump your thought now, clarify later.
+              Dump your thought now, clarify later.
             </p>
           </div>
         </div>

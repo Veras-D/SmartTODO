@@ -1,0 +1,30 @@
+services:
+  # Build Standalone Desktop Executable inside Docker Container
+  desktop-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tauri-desktop-builder
+    container_name: smart_todo_desktop_builder
+    privileged: true
+    cap_add:
+      - SYS_ADMIN
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run tauri build
+
+  # Launch Tauri Desktop App Window in Docker (X11 Display)
+  desktop-app-gui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tauri-desktop-builder
+    container_name: smart_todo_desktop_gui
+    environment:
+      - DISPLAY=${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - .:/app
+      - /app/node_modules
+    command: npm run tauri dev

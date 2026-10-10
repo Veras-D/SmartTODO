@@ -9,7 +9,9 @@ import {
   CheckSquare,
   Sparkles,
   Plus,
-  Repeat
+  Repeat,
+  Inbox,
+  Play
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { PomodoroTimer } from './PomodoroTimer';
@@ -31,8 +33,12 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
     filter, 
     setFilter,
     addQuickTask,
-    createOrUpdateTask
+    createOrUpdateTask,
+    tasks,
+    startTaskDirectly
   } = useTaskContext();
+
+  const inboxTasks = tasks.filter(t => t.status === 'inbox');
 
   const [showSkipOptions, setShowSkipOptions] = useState(false);
   const [blockerInput, setBlockerInput] = useState('');
@@ -79,15 +85,17 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
     }, 120);
   };
 
-  const handleInlineAdd = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddToInbox = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!inlineTaskTitle.trim()) return;
+    addQuickTask(inlineTaskTitle.trim());
+    setInlineTaskTitle('');
+  };
+
+  const handleStartImmediately = () => {
     if (!inlineTaskTitle.trim()) return;
     const task = addQuickTask(inlineTaskTitle.trim());
-    createOrUpdateTask({
-      id: task.id,
-      title: task.title,
-      status: 'ready'
-    });
+    startTaskDirectly(task.id);
     setInlineTaskTitle('');
   };
 
@@ -99,33 +107,61 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
         <div className="w-full flex flex-col items-center text-center animate-fade-in">
           
           {unblockedReadyTasks.length === 0 ? (
-            /* Clean Empty State: Add first task directly here */
+            /* Clean Empty State: Add task to Inbox or start directly */
             <div className="w-full max-w-md p-8 rounded-3xl bg-slate-900 border border-slate-800 text-center shadow-xl">
               <div className="w-14 h-14 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4">
                 <Dices className="w-7 h-7" />
               </div>
               <h2 className="text-lg font-bold text-white mb-1">Your Focus Deck is Empty</h2>
               <p className="text-xs text-slate-400 mb-5">
-                Add a task below to start your focus session.
+                Capture a task to send to your Inbox, or start focusing right away.
               </p>
 
-              <form onSubmit={handleInlineAdd} className="flex gap-2">
+              <form onSubmit={handleAddToInbox} className="space-y-3">
                 <input
                   type="text"
                   value={inlineTaskTitle}
                   onChange={(e) => setInlineTaskTitle(e.target.value)}
-                  placeholder="What do you need to do? (Press Enter)"
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  placeholder="What's on your mind? (Press Enter for Inbox)"
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                   autoFocus
                 />
-                <button
-                  type="submit"
-                  disabled={!inlineTaskTitle.trim()}
-                  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow disabled:opacity-40 transition"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="submit"
+                    disabled={!inlineTaskTitle.trim()}
+                    className="flex-1 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold shadow disabled:opacity-40 transition flex items-center justify-center gap-1.5"
+                  >
+                    <Inbox className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Send to Inbox</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleStartImmediately}
+                    disabled={!inlineTaskTitle.trim()}
+                    className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-semibold shadow disabled:opacity-40 transition flex items-center justify-center gap-1.5"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-white" />
+                    <span>Start Now ▶</span>
+                  </button>
+                </div>
               </form>
+
+              {/* Notice if user already has tasks sitting in Inbox */}
+              {inboxTasks.length > 0 && (
+                <div className="mt-5 pt-4 border-t border-slate-800/80">
+                  <p className="text-[11px] text-slate-400 mb-2">
+                    You have <span className="text-indigo-400 font-semibold">{inboxTasks.length}</span> {inboxTasks.length === 1 ? 'task' : 'tasks'} waiting in your Inbox
+                  </p>
+                  <button
+                    onClick={onOpenTasksTab}
+                    className="px-4 py-1.5 rounded-xl bg-indigo-950/40 border border-indigo-800/60 hover:bg-indigo-900/40 text-indigo-300 text-xs font-medium transition"
+                  >
+                    Go to Inbox to Clarify 📥
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             /* Normal Idle Roll Button */

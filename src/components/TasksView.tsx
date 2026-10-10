@@ -225,7 +225,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
       </form>
 
       {/* 2. GTD Tabs */}
-      <div className="flex items-center gap-1.5 mb-5 border-b border-slate-900 pb-2 text-xs overflow-x-auto">
+      <div className="flex items-center gap-1.5 mb-5 border-b border-slate-900 pb-2 text-xs overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab('inbox')}
           className={`px-3 py-1.5 rounded-xl font-medium transition flex items-center gap-1.5 shrink-0 ${
@@ -269,7 +269,7 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
           }`}
         >
           <Dices className="w-3.5 h-3.5" />
-          <span>Ready (Roulette)</span>
+          <span>Ready</span>
           <span className="text-[10px] text-slate-300 bg-slate-800 px-1.5 py-0.2 rounded-full">
             {readyCount}
           </span>

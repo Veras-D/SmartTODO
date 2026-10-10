@@ -1,4 +1,5 @@
 export type EnergyLevel = 'low' | 'medium' | 'high';
+export type TaskImportance = 'low' | 'medium' | 'high';
 
 export type TaskStatus = 
   | 'inbox'         // Captured raw thought, waiting for GTD processing or direct start
@@ -35,6 +36,7 @@ export interface Task {
   definitionOfDone?: string;
   notes?: string;
   status: TaskStatus;
+  importance?: TaskImportance; // Low / Med / High priority
   energyLevel: EnergyLevel;   // Low / Med / High spoon
   estimatedMinutes: number;   // 5, 15, 25, 45...
   microSteps: MicroStep[];

@@ -40,6 +40,8 @@ interface TaskContextType {
   
   // Filtered queries
   unblockedReadyTasks: Task[];
+  unblockedInboxTasks: Task[];
+  readyTasks: Task[];
   inProgressTasks: Task[];
   inboxTasks: Task[];
   completedTodayCount: number;
@@ -70,12 +72,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSoundEnabled(prev => !prev);
   };
 
-  // Derive unblocked, ready tasks matching today's criteria
+  // Derive unblocked tasks matching today's criteria (both 'ready' and 'inbox' can be started in focus deck)
   const unblockedReadyTasks = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     return tasks.filter(t => {
-      // Must be ready status (in-progress tasks live in the dedicated Continue Later tray)
-      if (t.status !== 'ready') return false;
+      // Must be ready or inbox status (in-progress tasks live in the dedicated Continue Later tray)
+      if (t.status !== 'ready' && t.status !== 'inbox') return false;
 
       // Must NOT be snoozed for today
       if (t.snoozedUntil && t.snoozedUntil.startsWith(today)) return false;
@@ -89,6 +91,23 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return true;
     });
+  }, [tasks]);
+
+  // Specific query for unblocked inbox tasks available to start in Focus Deck
+  const unblockedInboxTasks = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return tasks.filter(t => {
+      if (t.status !== 'inbox') return false;
+      if (t.snoozedUntil && t.snoozedUntil.startsWith(today)) return false;
+      const hasUnresolvedBlockers = t.blockers.some(b => !b.resolved);
+      if (hasUnresolvedBlockers) return false;
+      return true;
+    });
+  }, [tasks]);
+
+  // Tasks in ready status
+  const readyTasks = useMemo(() => {
+    return tasks.filter(t => t.status === 'ready');
   }, [tasks]);
 
   // Tasks currently in progress or paused to continue later
@@ -166,6 +185,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearInterval(interval);
         // Final landing
         const finalPick = candidates[Math.floor(Math.random() * candidates.length)];
+        setTasks(prev => prev.map(t => {
+          if (t.id === finalPick.id) {
+            return { ...t, status: 'in_progress' as TaskStatus };
+          }
+          return t;
+        }));
         setActiveTaskId(finalPick.id);
         setIsRolling(false);
         soundManager.playLandSound();
@@ -420,6 +445,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
           definitionOfDone: taskData.definitionOfDone || '',
           notes: taskData.notes || '',
           status: (taskData.status || 'ready') as TaskStatus,
+          importance: taskData.importance || 'medium',
           energyLevel: (taskData.energyLevel || 'medium') as EnergyLevel,
           estimatedMinutes: taskData.estimatedMinutes || 15,
           microSteps: taskData.microSteps || [],
@@ -514,6 +540,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         restoreFromColdStorage,
         declareBankruptcy,
         unblockedReadyTasks,
+        unblockedInboxTasks,
+        readyTasks,
         inProgressTasks,
         inboxTasks,
         completedTodayCount,

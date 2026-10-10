@@ -13,7 +13,8 @@ import {
   Inbox,
   Play,
   Clock,
-  Link
+  Link,
+  ArrowRight
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { PomodoroTimer } from './PomodoroTimer';
@@ -35,6 +36,8 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
     toggleMicroStep, 
     isRolling, 
     unblockedReadyTasks, 
+    unblockedInboxTasks,
+    readyTasks,
     inProgressTasks,
     filter, 
     setFilter,
@@ -271,7 +274,19 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
 
               {/* Calming status indicator */}
               <div className="mt-6 flex items-center gap-3 text-xs text-slate-400">
-                <span>{unblockedReadyTasks.length} {unblockedReadyTasks.length === 1 ? 'task' : 'tasks'} ready</span>
+                <span>
+                  {unblockedReadyTasks.length} {unblockedReadyTasks.length === 1 ? 'task' : 'tasks'} ready to focus
+                  {unblockedInboxTasks.length > 0 && readyTasks.length > 0 && (
+                    <span className="text-slate-500 text-[11px] ml-1">
+                      ({readyTasks.length} ready • {unblockedInboxTasks.length} inbox)
+                    </span>
+                  )}
+                  {unblockedInboxTasks.length > 0 && readyTasks.length === 0 && (
+                    <span className="text-amber-400/90 text-[11px] ml-1 font-medium">
+                      (from Inbox)
+                    </span>
+                  )}
+                </span>
                 <span>•</span>
                 <button
                   onClick={() => setFilter(filter === 'low_energy' ? 'all' : 'low_energy')}
@@ -285,6 +300,67 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                   <span>{filter === 'low_energy' ? 'Low energy active' : 'Low energy?'}</span>
                 </button>
               </div>
+
+              {/* 📥 Inbox Shelf - Direct Start in Focus Deck */}
+              {unblockedInboxTasks.length > 0 && (
+                <div className="w-full max-w-md mt-8 p-4 rounded-3xl bg-slate-900 border border-slate-800/90 shadow-xl text-left animate-fade-in">
+                  <div className="flex items-center justify-between mb-3 px-1">
+                    <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                      <Inbox className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Start from Inbox ({unblockedInboxTasks.length})</span>
+                    </span>
+                    <button
+                      onClick={onOpenTasksTab}
+                      className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium transition flex items-center gap-1"
+                      title="Clarify tasks with GTD method"
+                    >
+                      <span>Clarify in GTD</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {unblockedInboxTasks.map(task => (
+                      <div
+                        key={task.id}
+                        className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition shadow-sm"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs font-semibold text-white truncate">
+                            {task.title}
+                          </h4>
+                          <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-500">
+                            <span className="text-amber-400/90 font-medium bg-amber-950/40 px-1.5 py-0.2 rounded border border-amber-900/40">
+                              Inbox
+                            </span>
+                            {task.gtdContext && (
+                              <>
+                                <span>•</span>
+                                <span className="text-indigo-400">{task.gtdContext}</span>
+                              </>
+                            )}
+                            {task.estimatedMinutes && (
+                              <>
+                                <span>•</span>
+                                <span>~{task.estimatedMinutes}m</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => startTaskDirectly(task.id)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow transition active:scale-95 shrink-0"
+                          title="Start this inbox task now with Pomodoro focus"
+                        >
+                          <Play className="w-3 h-3 fill-white" />
+                          <span>Start</span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
 

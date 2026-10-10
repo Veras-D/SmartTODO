@@ -4,7 +4,7 @@ import {
   ArrowRight, 
   CheckCircle2, 
   Dices, 
-  Play, 
+  Play,
   Trash2, 
   SkipForward, 
   Save, 
@@ -14,7 +14,7 @@ import {
   Link
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
-import { Task, EnergyLevel, GTDContext, RecurrenceInterval, Blocker } from '../types/task';
+import { Task, EnergyLevel, TaskImportance, GTDContext, RecurrenceInterval, Blocker } from '../types/task';
 import { generateId } from '../utils/storage';
 import { getEligibleBlockerCandidates } from '../utils/taskDependencies';
 import { CustomSelect, SelectOption } from './CustomSelect';
@@ -61,6 +61,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
   const [definitionOfDone, setDefinitionOfDone] = useState('');
   const [gtdContext, setGtdContext] = useState<GTDContext>('@computer');
   const [recurrence, setRecurrence] = useState<RecurrenceInterval>('none');
+  const [importance, setImportance] = useState<TaskImportance>('medium');
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel>('medium');
   const [estimatedMinutes, setEstimatedMinutes] = useState<number>(25);
   const [newBlockerText, setNewBlockerText] = useState('');
@@ -80,6 +81,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
       setDefinitionOfDone(currentTask.definitionOfDone || '');
       setGtdContext(currentTask.gtdContext || '@computer');
       setRecurrence(currentTask.recurrence || 'none');
+      setImportance(currentTask.importance || 'medium');
       setEnergyLevel(currentTask.energyLevel || 'medium');
       setEstimatedMinutes(currentTask.estimatedMinutes || 25);
       setBlockers(currentTask.blockers || []);
@@ -126,6 +128,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
       definitionOfDone: definitionOfDone.trim() || undefined,
       gtdContext,
       recurrence: recurrence !== 'none' ? recurrence : undefined,
+      importance,
       energyLevel,
       estimatedMinutes,
       blockers,
@@ -149,6 +152,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
       definitionOfDone: definitionOfDone.trim() || undefined,
       gtdContext,
       recurrence: recurrence !== 'none' ? recurrence : undefined,
+      importance,
       energyLevel,
       estimatedMinutes,
       blockers,
@@ -168,6 +172,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
       definitionOfDone: definitionOfDone.trim() || undefined,
       gtdContext,
       recurrence: recurrence !== 'none' ? recurrence : undefined,
+      importance,
       energyLevel,
       estimatedMinutes,
       blockers,
@@ -305,7 +310,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
           />
         </div>
 
-        {/* 3. Properties 2x2 Grid: Context, Repeat, Energy, Timer */}
+        {/* 3. Properties Grid: Context, Repeat, Importance, Energy, Timer */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
           <div>
             <label className="text-[11px] font-medium text-slate-400 block mb-1">
@@ -331,6 +336,32 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
 
           <div>
             <label className="text-[11px] font-medium text-slate-400 block mb-1">
+              Importance
+            </label>
+            <div className="grid grid-cols-3 gap-1">
+              {(['low', 'medium', 'high'] as TaskImportance[]).map(lvl => (
+                <button
+                  key={lvl}
+                  type="button"
+                  onClick={() => setImportance(lvl)}
+                  className={`py-2 rounded-xl border text-xs font-medium capitalize transition ${
+                    importance === lvl
+                      ? lvl === 'high'
+                        ? 'bg-amber-600 text-white border-amber-500 shadow font-semibold'
+                        : lvl === 'medium'
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow font-semibold'
+                        : 'bg-slate-700 text-white border-slate-600 shadow font-semibold'
+                      : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                  }`}
+                >
+                  {lvl === 'high' ? '🔥 High' : lvl === 'medium' ? '⚡ Med' : '🌱 Low'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-medium text-slate-400 block mb-1">
               Energy (Spoons)
             </label>
             <div className="grid grid-cols-3 gap-1">
@@ -351,7 +382,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
             </div>
           </div>
 
-          <div>
+          <div className="sm:col-span-2">
             <label className="text-[11px] font-medium text-slate-400 block mb-1">
               Timer Duration
             </label>
@@ -512,16 +543,6 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
             >
               <Dices className="w-3.5 h-3.5" />
               <span>Ready Stage 🎲</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleStartNow}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition flex items-center gap-1.5"
-              title="Clarification complete: start focusing immediately!"
-            >
-              <Play className="w-3.5 h-3.5 fill-white" />
-              <span>Start Now ▶</span>
             </button>
           </div>
 

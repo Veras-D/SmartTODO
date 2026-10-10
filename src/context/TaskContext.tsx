@@ -21,6 +21,7 @@ interface TaskContextType {
   
   // Actions
   rollRandomTask: () => void;
+  startTaskDirectly: (taskId: string) => void;
   completeActiveTask: () => void;
   handleCantDo: (reason: 'too_tired' | 'blocked' | 'not_now' | 'cold_storage', blockerText?: string) => void;
   activateFrictionBuster: () => void;
@@ -153,6 +154,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }, 90);
   }, [getEligibleRollPool, activeTaskId]);
+
+  // Start a specific task directly (from Inbox or Task list)
+  const startTaskDirectly = useCallback((taskId: string) => {
+    setActiveTaskId(taskId);
+    soundManager.playLandSound();
+  }, []);
 
   // Complete Active Task
   const completeActiveTask = useCallback(() => {
@@ -385,6 +392,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toggleSound,
         isRolling,
         rollRandomTask,
+        startTaskDirectly,
         completeActiveTask,
         handleCantDo,
         activateFrictionBuster,

@@ -11,6 +11,7 @@ import {
   Plus
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
+import { PomodoroTimer } from './PomodoroTimer';
 
 interface FocusHUDProps {
   onOpenTasksTab: () => void;
@@ -206,6 +207,9 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                 <span><b>Just do 2 minutes:</b> {activeTask.frictionBusterStep}</span>
               </div>
             )}
+
+            {/* Pomodoro Focus Timer */}
+            <PomodoroTimer initialMinutes={activeTask.estimatedMinutes || 25} />
 
             {/* Micro-Steps (if present) */}
             {activeTask.microSteps && activeTask.microSteps.length > 0 && (

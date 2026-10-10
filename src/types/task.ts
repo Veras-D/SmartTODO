@@ -1,13 +1,15 @@
 export type EnergyLevel = 'low' | 'medium' | 'high';
 
 export type TaskStatus = 
-  | 'inbox'         // Just captured, not yet SMART-ified
-  | 'ready'         // Unblocked, ready for roulette
-  | 'in_progress'   // Currently picked on the HUD
+  | 'inbox'         // Captured raw thought, waiting for GTD processing or direct start
+  | 'ready'         // Clarified and ready for the roulette
+  | 'in_progress'   // Currently active on the Focus HUD
   | 'completed'     // Finished!
-  | 'snoozed'       // Snoozed for the rest of today
-  | 'blocked'       // Has active blockers preventing execution
-  | 'cold_storage'; // Archived to prevent task rot/guilt
+  | 'snoozed'       // Snoozed for today
+  | 'blocked'       // Has active blockers / Waiting For
+  | 'cold_storage'; // Archived
+
+export type GTDContext = '@computer' | '@phone' | '@errands' | '@home' | '@anywhere';
 
 export interface MicroStep {
   id: string;
@@ -25,20 +27,23 @@ export interface Blocker {
 export interface Task {
   id: string;
   title: string;
-  definitionOfDone?: string; // "I am finished when [X] is done"
+  nextAction?: string;        // GTD: Next physical actionable step
+  gtdContext?: GTDContext;    // GTD Context (@computer, @phone, etc.)
+  desiredOutcome?: string;    // GTD: Desired outcome / definition of done
+  definitionOfDone?: string;
   notes?: string;
   status: TaskStatus;
-  energyLevel: EnergyLevel; // 'low' (quick/easy), 'medium' (standard), 'high' (deep focus)
-  estimatedMinutes: number; // 5, 15, 30, 60...
+  energyLevel: EnergyLevel;   // Low / Med / High spoon
+  estimatedMinutes: number;   // 5, 15, 25, 45...
   microSteps: MicroStep[];
   blockers: Blocker[];
   frictionBusterStep?: string; // 2-minute starter step
   skipCount: number;
   lastSkippedReason?: 'too_tired' | 'blocked' | 'not_now' | 'other';
-  snoozedUntil?: string; // ISO date string
-  createdAt: string;     // ISO date string
-  completedAt?: string;   // ISO date string
-  archivedAt?: string;    // ISO date string
+  snoozedUntil?: string;
+  createdAt: string;
+  completedAt?: string;
+  archivedAt?: string;
 }
 
 export type RouletteFilter = 'all' | 'low_energy' | 'deep_focus' | 'quick_win';

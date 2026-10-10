@@ -159,6 +159,63 @@ class SoundSynthesizer {
       // Audio playback safety
     }
   }
+
+  // Play peaceful meditation bell chime when Pomodoro completes
+  playTimerChime() {
+    if (!this.enabled) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    try {
+      const frequencies = [587.33, 880.00]; // D5 and A5
+      frequencies.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.15);
+
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime + idx * 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.15 + 1.2);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(ctx.currentTime + idx * 0.15);
+        osc.stop(ctx.currentTime + idx * 0.15 + 1.3);
+      });
+    } catch {
+      // Audio playback safety
+    }
+  }
+
+  // Soft click when timer starts or toggles
+  playTimerTick() {
+    if (!this.enabled) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    try {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.03);
+
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.03);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.03);
+    } catch {
+      // Audio playback safety
+    }
+  }
 }
 
 export const soundManager = new SoundSynthesizer();

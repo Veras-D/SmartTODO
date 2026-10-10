@@ -44,7 +44,7 @@ const MainLayout: React.FC = () => {
         {currentTab === 'focus' ? (
           <FocusHUD onOpenTasksTab={() => setCurrentTab('tasks')} />
         ) : (
-          <TasksView />
+          <TasksView onSelectTaskForFocus={() => setCurrentTab('focus')} />
         )}
       </main>
 

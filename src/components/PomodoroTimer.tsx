@@ -14,12 +14,16 @@ import { soundManager } from '../utils/sound';
 
 interface PomodoroTimerProps {
   initialMinutes?: number;
+  autoStart?: boolean;
 }
 
-export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ initialMinutes = 25 }) => {
+export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ 
+  initialMinutes = 25,
+  autoStart = true
+}) => {
   const [targetDuration, setTargetDuration] = useState<number>(initialMinutes * 60);
   const [secondsLeft, setSecondsLeft] = useState<number>(initialMinutes * 60);
-  const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [isRunning, setIsRunning] = useState<boolean>(autoStart);
   const [mode, setMode] = useState<'focus' | 'break'>('focus');
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
   const [isFinished, setIsFinished] = useState<boolean>(false);
@@ -31,10 +35,12 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ initialMinutes = 2
     const defaultSecs = (initialMinutes || 25) * 60;
     setTargetDuration(defaultSecs);
     setSecondsLeft(defaultSecs);
-    setIsRunning(false);
+    if (autoStart) {
+      setIsRunning(true);
+    }
     setIsFinished(false);
     setMode('focus');
-  }, [initialMinutes]);
+  }, [initialMinutes, autoStart]);
 
   // Timer interval loop
   useEffect(() => {
@@ -78,14 +84,20 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ initialMinutes = 2
 
   const handleAddFiveMinutes = () => {
     soundManager.playTimerTick();
-    setSecondsLeft(prev => prev + 300);
-    setTargetDuration(prev => prev + 300);
+    if (isFinished) {
+      setTargetDuration(300);
+      setSecondsLeft(300);
+    } else {
+      setSecondsLeft(prev => prev + 300);
+      setTargetDuration(prev => prev + 300);
+    }
     setIsFinished(false);
+    setIsRunning(true);
   };
 
   const setPreset = (mins: number, timerMode: 'focus' | 'break' = 'focus') => {
     soundManager.playTimerTick();
-    setIsRunning(false);
+    setIsRunning(true);
     setIsFinished(false);
     setMode(timerMode);
     setTargetDuration(mins * 60);

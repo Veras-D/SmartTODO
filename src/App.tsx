@@ -41,11 +41,12 @@ const MainLayout: React.FC = () => {
 
       {/* Main Focus or Tasks view */}
       <main className="flex-1 pb-12">
-        {currentTab === 'focus' ? (
+        <div className={currentTab === 'focus' ? 'block' : 'hidden'}>
           <FocusHUD onOpenTasksTab={() => setCurrentTab('tasks')} />
-        ) : (
+        </div>
+        <div className={currentTab === 'tasks' ? 'block' : 'hidden'}>
           <TasksView onSelectTaskForFocus={() => setCurrentTab('focus')} />
-        )}
+        </div>
       </main>
 
       {/* Clean Modals for Quick Capture & Reset */}

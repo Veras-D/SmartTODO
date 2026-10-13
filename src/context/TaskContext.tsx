@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { Task, EnergyLevel, RouletteFilter, TaskStatus } from '../types/task';
 import { 
@@ -38,6 +38,17 @@ interface TaskContextType {
   restoreFromColdStorage: (id: string) => void;
   declareBankruptcy: () => number;
   
+  // Pomodoro Timer State & Actions
+  timerSecondsLeft: number;
+  timerTargetDuration: number;
+  timerIsRunning: boolean;
+  timerMode: 'focus' | 'break';
+  timerIsFinished: boolean;
+  toggleTimer: () => void;
+  resetTimer: () => void;
+  addTimerMinutes: (mins: number) => void;
+  setTimerPreset: (mins: number, mode?: 'focus' | 'break') => void;
+
   // Filtered queries
   unblockedReadyTasks: Task[];
   unblockedInboxTasks: Task[];
@@ -71,6 +82,120 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const toggleSound = () => {
     setSoundEnabled(prev => !prev);
   };
+
+  // Pomodoro Timer state (persists across app tabs & browser backgrounding)
+  const [timerTargetDuration, setTimerTargetDuration] = useState<number>(25 * 60);
+  const [timerSecondsLeft, setTimerSecondsLeft] = useState<number>(25 * 60);
+  const [timerIsRunning, setTimerIsRunning] = useState<boolean>(false);
+  const [timerMode, setTimerMode] = useState<'focus' | 'break'>('focus');
+  const [timerIsFinished, setTimerIsFinished] = useState<boolean>(false);
+  const timerEndTimeRef = useRef<number | null>(null);
+
+  // Synchronize timer loop using wall-clock timestamp
+  useEffect(() => {
+    if (!timerIsRunning) {
+      timerEndTimeRef.current = null;
+      return;
+    }
+
+    if (!timerEndTimeRef.current) {
+      timerEndTimeRef.current = Date.now() + timerSecondsLeft * 1000;
+    }
+
+    const checkTimer = () => {
+      if (!timerEndTimeRef.current) return;
+      const msLeft = timerEndTimeRef.current - Date.now();
+      const secs = Math.max(0, Math.ceil(msLeft / 1000));
+
+      if (secs <= 0) {
+        timerEndTimeRef.current = null;
+        setTimerSecondsLeft(0);
+        setTimerIsRunning(false);
+        setTimerIsFinished(true);
+        soundManager.playTimerChime();
+      } else {
+        setTimerSecondsLeft(secs);
+      }
+    };
+
+    checkTimer();
+    const interval = setInterval(checkTimer, 250);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && timerIsRunning && timerEndTimeRef.current) {
+        checkTimer();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [timerIsRunning]);
+
+  const toggleTimer = useCallback(() => {
+    soundManager.playTimerTick();
+    if (timerIsFinished) {
+      const secs = timerTargetDuration;
+      setTimerSecondsLeft(secs);
+      setTimerIsFinished(false);
+      timerEndTimeRef.current = Date.now() + secs * 1000;
+      setTimerIsRunning(true);
+      return;
+    }
+
+    if (timerIsRunning) {
+      if (timerEndTimeRef.current) {
+        const msLeft = timerEndTimeRef.current - Date.now();
+        setTimerSecondsLeft(Math.max(0, Math.ceil(msLeft / 1000)));
+      }
+      timerEndTimeRef.current = null;
+      setTimerIsRunning(false);
+    } else {
+      timerEndTimeRef.current = Date.now() + timerSecondsLeft * 1000;
+      setTimerIsRunning(true);
+    }
+  }, [timerIsFinished, timerIsRunning, timerSecondsLeft, timerTargetDuration]);
+
+  const resetTimer = useCallback(() => {
+    soundManager.playTimerTick();
+    timerEndTimeRef.current = null;
+    setTimerIsRunning(false);
+    setTimerIsFinished(false);
+    setTimerSecondsLeft(timerTargetDuration);
+  }, [timerTargetDuration]);
+
+  const addTimerMinutes = useCallback((mins: number) => {
+    soundManager.playTimerTick();
+    const additionalSecs = mins * 60;
+    if (timerIsFinished) {
+      setTimerTargetDuration(additionalSecs);
+      setTimerSecondsLeft(additionalSecs);
+      timerEndTimeRef.current = Date.now() + additionalSecs * 1000;
+    } else {
+      setTimerTargetDuration(prev => prev + additionalSecs);
+      setTimerSecondsLeft(prev => prev + additionalSecs);
+      if (timerEndTimeRef.current) {
+        timerEndTimeRef.current += additionalSecs * 1000;
+      } else {
+        timerEndTimeRef.current = Date.now() + (timerSecondsLeft + additionalSecs) * 1000;
+      }
+    }
+    setTimerIsFinished(false);
+    setTimerIsRunning(true);
+  }, [timerIsFinished, timerSecondsLeft]);
+
+  const setTimerPreset = useCallback((mins: number, presetMode: 'focus' | 'break' = 'focus') => {
+    soundManager.playTimerTick();
+    const secs = mins * 60;
+    setTimerMode(presetMode);
+    setTimerTargetDuration(secs);
+    setTimerSecondsLeft(secs);
+    setTimerIsFinished(false);
+    timerEndTimeRef.current = Date.now() + secs * 1000;
+    setTimerIsRunning(true);
+  }, []);
 
   // Derive unblocked tasks matching today's criteria (both 'ready' and 'inbox' can be started in focus deck)
   const unblockedReadyTasks = useMemo(() => {
@@ -194,6 +319,16 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setActiveTaskId(finalPick.id);
         setIsRolling(false);
         soundManager.playLandSound();
+
+        // Auto-start Pomodoro timer for the selected task
+        const mins = finalPick.estimatedMinutes || 25;
+        const secs = mins * 60;
+        setTimerTargetDuration(secs);
+        setTimerSecondsLeft(secs);
+        setTimerMode('focus');
+        setTimerIsFinished(false);
+        timerEndTimeRef.current = Date.now() + secs * 1000;
+        setTimerIsRunning(true);
       }
     }, 90);
   }, [getEligibleRollPool, activeTaskId]);
@@ -217,7 +352,18 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
     setActiveTaskId(taskId);
     soundManager.playLandSound();
-  }, [activeTaskId]);
+
+    // Auto-start Pomodoro timer for this task
+    const targetTask = tasks.find(t => t.id === taskId);
+    const mins = targetTask?.estimatedMinutes || 25;
+    const secs = mins * 60;
+    setTimerTargetDuration(secs);
+    setTimerSecondsLeft(secs);
+    setTimerMode('focus');
+    setTimerIsFinished(false);
+    timerEndTimeRef.current = Date.now() + secs * 1000;
+    setTimerIsRunning(true);
+  }, [activeTaskId, tasks]);
 
   // Pause active task or specific task to continue later
   const continueTaskLater = useCallback((taskId?: string) => {
@@ -235,6 +381,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }));
     if (activeTaskId === targetId) {
       setActiveTaskId(null);
+      setTimerIsRunning(false);
+      timerEndTimeRef.current = null;
     }
   }, [activeTaskId]);
 
@@ -310,6 +458,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     setActiveTaskId(null);
+    setTimerIsRunning(false);
+    timerEndTimeRef.current = null;
   }, [activeTask]);
 
   // Handle "Can't do it now" adaptive response
@@ -372,6 +522,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     setActiveTaskId(null);
+    setTimerIsRunning(false);
+    timerEndTimeRef.current = null;
   }, [activeTask]);
 
   // Activate Friction Buster (shrink task to 2-minute starter)
@@ -545,7 +697,16 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         inProgressTasks,
         inboxTasks,
         completedTodayCount,
-        coldStorageTasks
+        coldStorageTasks,
+        timerSecondsLeft,
+        timerTargetDuration,
+        timerIsRunning,
+        timerMode,
+        timerIsFinished,
+        toggleTimer,
+        resetTimer,
+        addTimerMinutes,
+        setTimerPreset
       }}
     >
       {children}

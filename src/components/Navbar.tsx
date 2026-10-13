@@ -31,7 +31,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     completedTodayCount, 
     unblockedReadyTasks,
     inProgressTasks,
-    tasks
+    tasks,
+    timerIsRunning,
+    timerSecondsLeft
   } = useTaskContext();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -89,13 +91,22 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <Dices className="w-3.5 h-3.5" />
             <span>Focus</span>
-            {inProgressTasks.length > 0 && (
+            {timerIsRunning ? (
+              <span className={`flex items-center gap-1 font-mono text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                currentTab === 'focus'
+                  ? 'bg-indigo-950 text-emerald-300 border border-emerald-500/30'
+                  : 'bg-emerald-950/90 text-emerald-300 border border-emerald-500/50 animate-pulse'
+              }`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                {Math.floor(timerSecondsLeft / 60)}:{(timerSecondsLeft % 60).toString().padStart(2, '0')}
+              </span>
+            ) : inProgressTasks.length > 0 ? (
               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
                 currentTab === 'focus' ? 'bg-indigo-900/90 text-white' : 'bg-indigo-950/80 text-indigo-300 border border-indigo-800/40'
               }`}>
                 {inProgressTasks.length}
               </span>
-            )}
+            ) : null}
           </button>
 
           <button

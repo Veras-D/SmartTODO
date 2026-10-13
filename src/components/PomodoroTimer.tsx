@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { 
   Play, 
   Pause, 
@@ -10,99 +10,22 @@ import {
   ChevronUp,
   Sparkles
 } from 'lucide-react';
-import { soundManager } from '../utils/sound';
+import { useTaskContext } from '../context/TaskContext';
 
-interface PomodoroTimerProps {
-  initialMinutes?: number;
-  autoStart?: boolean;
-}
+export const PomodoroTimer: React.FC = () => {
+  const {
+    timerSecondsLeft,
+    timerTargetDuration,
+    timerIsRunning,
+    timerMode,
+    timerIsFinished,
+    toggleTimer,
+    resetTimer,
+    addTimerMinutes,
+    setTimerPreset
+  } = useTaskContext();
 
-export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ 
-  initialMinutes = 25,
-  autoStart = true
-}) => {
-  const [targetDuration, setTargetDuration] = useState<number>(initialMinutes * 60);
-  const [secondsLeft, setSecondsLeft] = useState<number>(initialMinutes * 60);
-  const [isRunning, setIsRunning] = useState<boolean>(autoStart);
-  const [mode, setMode] = useState<'focus' | 'break'>('focus');
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
-  const [isFinished, setIsFinished] = useState<boolean>(false);
-
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Sync when initialMinutes changes on new task
-  useEffect(() => {
-    const defaultSecs = (initialMinutes || 25) * 60;
-    setTargetDuration(defaultSecs);
-    setSecondsLeft(defaultSecs);
-    if (autoStart) {
-      setIsRunning(true);
-    }
-    setIsFinished(false);
-    setMode('focus');
-  }, [initialMinutes, autoStart]);
-
-  // Timer interval loop
-  useEffect(() => {
-    if (isRunning) {
-      timerRef.current = setInterval(() => {
-        setSecondsLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current!);
-            setIsRunning(false);
-            setIsFinished(true);
-            soundManager.playTimerChime();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isRunning]);
-
-  const toggleStartPause = () => {
-    soundManager.playTimerTick();
-    if (isFinished) {
-      setSecondsLeft(targetDuration);
-      setIsFinished(false);
-    }
-    setIsRunning(prev => !prev);
-  };
-
-  const handleReset = () => {
-    soundManager.playTimerTick();
-    setIsRunning(false);
-    setIsFinished(false);
-    setSecondsLeft(targetDuration);
-  };
-
-  const handleAddFiveMinutes = () => {
-    soundManager.playTimerTick();
-    if (isFinished) {
-      setTargetDuration(300);
-      setSecondsLeft(300);
-    } else {
-      setSecondsLeft(prev => prev + 300);
-      setTargetDuration(prev => prev + 300);
-    }
-    setIsFinished(false);
-    setIsRunning(true);
-  };
-
-  const setPreset = (mins: number, timerMode: 'focus' | 'break' = 'focus') => {
-    soundManager.playTimerTick();
-    setIsRunning(true);
-    setIsFinished(false);
-    setMode(timerMode);
-    setTargetDuration(mins * 60);
-    setSecondsLeft(mins * 60);
-  };
 
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -110,7 +33,9 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  const progressPercent = targetDuration > 0 ? ((targetDuration - secondsLeft) / targetDuration) * 100 : 0;
+  const progressPercent = timerTargetDuration > 0 
+    ? ((timerTargetDuration - timerSecondsLeft) / timerTargetDuration) * 100 
+    : 0;
 
   return (
     <div className="my-5 p-4 rounded-2xl bg-slate-950/70 border border-slate-800 shadow-inner">
@@ -118,15 +43,15 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
       {/* Header bar */}
       <div className="flex items-center justify-between text-xs text-slate-400">
         <div className="flex items-center gap-1.5 font-medium">
-          {mode === 'focus' ? (
+          {timerMode === 'focus' ? (
             <Timer className="w-4 h-4 text-indigo-400" />
           ) : (
             <Coffee className="w-4 h-4 text-emerald-400" />
           )}
           <span className="text-slate-300 font-semibold">
-            {mode === 'focus' ? 'Focus Pomodoro' : 'Short Break'}
+            {timerMode === 'focus' ? 'Focus Pomodoro' : 'Short Break'}
           </span>
-          {isRunning && (
+          {timerIsRunning && (
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping ml-1" />
           )}
         </div>
@@ -145,11 +70,11 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
           
           {/* Digital Timer Display */}
           <div className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-white my-1">
-            {formatTime(secondsLeft)}
+            {formatTime(timerSecondsLeft)}
           </div>
 
           {/* Finished Celebration Banner */}
-          {isFinished && (
+          {timerIsFinished && (
             <div className="mt-2 mb-1 px-3 py-1 rounded-xl bg-indigo-950/60 border border-indigo-500/40 text-indigo-200 text-xs font-medium flex items-center gap-1.5 animate-bounce">
               <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
               <span>Great job! Take a quick 5m break or finish your task.</span>
@@ -160,7 +85,7 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
           <div className="w-full bg-slate-800/80 rounded-full h-1.5 my-3 overflow-hidden">
             <div 
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                mode === 'focus' ? 'bg-indigo-500' : 'bg-emerald-500'
+                timerMode === 'focus' ? 'bg-indigo-500' : 'bg-emerald-500'
               }`}
               style={{ width: `${progressPercent}%` }}
             />
@@ -169,9 +94,9 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
           {/* Quick Presets */}
           <div className="flex items-center gap-1.5 mb-3 text-[11px]">
             <button
-              onClick={() => setPreset(15, 'focus')}
+              onClick={() => setTimerPreset(15, 'focus')}
               className={`px-2.5 py-1 rounded-lg border transition ${
-                targetDuration === 900 && mode === 'focus'
+                timerTargetDuration === 900 && timerMode === 'focus'
                   ? 'bg-indigo-600 text-white border-indigo-500 font-semibold'
                   : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-300'
               }`}
@@ -179,9 +104,9 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
               15m
             </button>
             <button
-              onClick={() => setPreset(25, 'focus')}
+              onClick={() => setTimerPreset(25, 'focus')}
               className={`px-2.5 py-1 rounded-lg border transition ${
-                targetDuration === 1500 && mode === 'focus'
+                timerTargetDuration === 1500 && timerMode === 'focus'
                   ? 'bg-indigo-600 text-white border-indigo-500 font-semibold'
                   : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-300'
               }`}
@@ -189,9 +114,9 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
               25m
             </button>
             <button
-              onClick={() => setPreset(45, 'focus')}
+              onClick={() => setTimerPreset(45, 'focus')}
               className={`px-2.5 py-1 rounded-lg border transition ${
-                targetDuration === 2700 && mode === 'focus'
+                timerTargetDuration === 2700 && timerMode === 'focus'
                   ? 'bg-indigo-600 text-white border-indigo-500 font-semibold'
                   : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-300'
               }`}
@@ -199,9 +124,9 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
               45m
             </button>
             <button
-              onClick={() => setPreset(5, 'break')}
+              onClick={() => setTimerPreset(5, 'break')}
               className={`px-2.5 py-1 rounded-lg border transition ${
-                mode === 'break'
+                timerMode === 'break'
                   ? 'bg-emerald-600 text-white border-emerald-500 font-semibold'
                   : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-emerald-300'
               }`}
@@ -213,28 +138,28 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
           {/* Controls: Start/Pause, Reset, +5m */}
           <div className="flex items-center gap-2">
             <button
-              onClick={toggleStartPause}
+              onClick={toggleTimer}
               className={`px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow transition active:scale-95 ${
-                isRunning
+                timerIsRunning
                   ? 'bg-amber-600 hover:bg-amber-500 text-white'
                   : 'bg-indigo-600 hover:bg-indigo-500 text-white'
               }`}
             >
-              {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-              <span>{isRunning ? 'Pause' : 'Start'}</span>
+              {timerIsRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+              <span>{timerIsRunning ? 'Pause' : 'Start'}</span>
             </button>
 
             <button
-              onClick={handleAddFiveMinutes}
+              onClick={() => addTimerMinutes(5)}
               className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-medium border border-slate-800 transition flex items-center gap-1"
-              title="Add 5 minutes"
+              title="Add 5 minutes and keep running"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>5m</span>
             </button>
 
             <button
-              onClick={handleReset}
+              onClick={resetTimer}
               className="p-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition"
               title="Reset timer"
             >

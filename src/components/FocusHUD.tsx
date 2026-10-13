@@ -428,7 +428,7 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
             )}
 
             {/* Pomodoro Focus Timer */}
-            <PomodoroTimer key={activeTask.id} initialMinutes={activeTask.estimatedMinutes || 25} autoStart={true} />
+            <PomodoroTimer />
 
             {/* Micro-Steps (if present) */}
             {activeTask.microSteps && activeTask.microSteps.length > 0 && (

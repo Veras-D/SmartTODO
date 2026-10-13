@@ -8,7 +8,13 @@ import { BacklogBankruptcyModal } from './components/BacklogBankruptcyModal';
 
 const MainLayout: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<'focus' | 'tasks'>('focus');
+  const [tasksNavKey, setTasksNavKey] = useState<number>(0);
   
+  const handleOpenTasksTab = () => {
+    setCurrentTab('tasks');
+    setTasksNavKey(prev => prev + 1);
+  };
+
   // Modals state
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const [isBankruptcyOpen, setIsBankruptcyOpen] = useState(false);
@@ -34,7 +40,12 @@ const MainLayout: React.FC = () => {
       {/* Minimal Top Navigation */}
       <Navbar
         currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
+        setCurrentTab={(tab) => {
+          setCurrentTab(tab);
+          if (tab === 'tasks') {
+            setTasksNavKey(prev => prev + 1);
+          }
+        }}
         onOpenQuickCapture={() => setIsQuickCaptureOpen(true)}
         onOpenBankruptcy={() => setIsBankruptcyOpen(true)}
       />
@@ -42,10 +53,14 @@ const MainLayout: React.FC = () => {
       {/* Main Focus or Tasks view */}
       <main className="flex-1 pb-12">
         <div className={currentTab === 'focus' ? 'block' : 'hidden'}>
-          <FocusHUD onOpenTasksTab={() => setCurrentTab('tasks')} />
+          <FocusHUD onOpenTasksTab={handleOpenTasksTab} />
         </div>
         <div className={currentTab === 'tasks' ? 'block' : 'hidden'}>
-          <TasksView onSelectTaskForFocus={() => setCurrentTab('focus')} />
+          <TasksView 
+            isVisible={currentTab === 'tasks'}
+            tasksNavKey={tasksNavKey}
+            onSelectTaskForFocus={() => setCurrentTab('focus')} 
+          />
         </div>
       </main>
 

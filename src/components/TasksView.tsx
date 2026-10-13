@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Play, 
   Trash2, 
@@ -45,9 +45,15 @@ const RECURRENCE_OPTIONS: SelectOption[] = [
 
 interface TasksViewProps {
   onSelectTaskForFocus: () => void;
+  isVisible?: boolean;
+  tasksNavKey?: number;
 }
 
-export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) => {
+export const TasksView: React.FC<TasksViewProps> = ({ 
+  onSelectTaskForFocus,
+  isVisible = true,
+  tasksNavKey = 0
+}) => {
   const { 
     tasks, 
     addQuickTask, 
@@ -57,10 +63,44 @@ export const TasksView: React.FC<TasksViewProps> = ({ onSelectTaskForFocus }) =>
     moveToInbox
   } = useTaskContext();
 
+  // Determine default tab by priority:
+  // 1. Inbox (if any tasks in inbox)
+  // 2. In Progress (if any tasks in in_progress)
+  // 3. Ready (otherwise)
+  const getDefaultSubTab = useCallback((): 'inbox' | 'in_progress' | 'ready' => {
+    if (tasks.some(t => t.status === 'inbox')) return 'inbox';
+    if (tasks.some(t => t.status === 'in_progress')) return 'in_progress';
+    return 'ready';
+  }, [tasks]);
+
   const [isRefining, setIsRefining] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [activeTab, setActiveTab] = useState<'inbox' | 'in_progress' | 'ready' | 'blocked' | 'done' | 'all'>('inbox');
+  const [activeTab, setActiveTab] = useState<'inbox' | 'in_progress' | 'ready' | 'blocked' | 'done' | 'all'>(() => {
+    if (tasks.some(t => t.status === 'inbox')) return 'inbox';
+    if (tasks.some(t => t.status === 'in_progress')) return 'in_progress';
+    return 'ready';
+  });
   const [clarifyingTaskId, setClarifyingTaskId] = useState<string | null>(null);
+
+  // When switching to the Tasks tab, prioritize: inbox -> in_progress -> ready
+  const prevIsVisibleRef = useRef<boolean>(false);
+  const prevNavKeyRef = useRef<number>(tasksNavKey);
+
+  useEffect(() => {
+    const isNewEntry = isVisible && !prevIsVisibleRef.current;
+    const isNavKeyChanged = tasksNavKey !== prevNavKeyRef.current;
+
+    if (isVisible && (isNewEntry || isNavKeyChanged)) {
+      const targetTab = getDefaultSubTab();
+      setActiveTab(targetTab);
+      if (targetTab !== 'inbox') {
+        setIsRefining(false);
+      }
+    }
+
+    prevIsVisibleRef.current = !!isVisible;
+    prevNavKeyRef.current = tasksNavKey;
+  }, [isVisible, tasksNavKey, getDefaultSubTab]);
 
   // GTD Edit Form States
   const [nextAction, setNextAction] = useState('');

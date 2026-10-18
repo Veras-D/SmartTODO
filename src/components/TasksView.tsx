@@ -18,7 +18,8 @@ import {
   Square,
   Plus,
   Repeat,
-  Link
+  Link,
+  RotateCcw
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Task, EnergyLevel, TaskImportance, GTDContext, Blocker, RecurrenceInterval } from '../types/task';
@@ -60,7 +61,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
     createOrUpdateTask, 
     deleteTask,
     startTaskDirectly,
-    moveToInbox
+    moveToInbox,
+    moveToReadyPool
   } = useTaskContext();
 
   // Determine default tab by priority:
@@ -159,7 +161,9 @@ export const TasksView: React.FC<TasksViewProps> = ({
       energyLevel,
       estimatedMinutes,
       recurrence: recurrence !== 'none' ? recurrence : undefined,
-      status: updatedStatus
+      status: updatedStatus,
+      completedAt: markAsReady ? undefined : task.completedAt,
+      nextDueDate: markAsReady ? undefined : task.nextDueDate
     });
 
     setClarifyingTaskId(null);
@@ -460,7 +464,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
                             {task.recurrence === 'daily' && 'Daily'}
                             {task.recurrence === 'weekly' && 'Weekly'}
                             {task.recurrence === 'monthly' && 'Monthly'}
-                            {task.nextDueDate && ` (Due ${task.nextDueDate})`}
+                            {task.status === 'completed' && task.nextDueDate && ` • Next: ${task.nextDueDate}`}
+                            {task.status !== 'completed' && task.nextDueDate && ` • Due ${task.nextDueDate}`}
                           </span>
                         </span>
                       )}
@@ -482,6 +487,18 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
                   {/* Actions: Start/Resume, Clarify, Delete */}
                   <div className="flex items-center gap-2 shrink-0">
+                    {/* Back to Ready button for completed tasks */}
+                    {task.status === 'completed' && (
+                      <button
+                        onClick={() => moveToReadyPool(task.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition active:scale-95"
+                        title="Move back to Ready pool"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Back to Ready</span>
+                      </button>
+                    )}
+
                     {/* Start / Resume button */}
                     {task.status !== 'completed' && (
                       <button

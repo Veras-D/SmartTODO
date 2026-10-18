@@ -7,7 +7,8 @@ import {
   loadSoundSetting, 
   saveSoundSetting, 
   generateId,
-  calculateNextDueDate 
+  calculateNextDueDate,
+  rolloverRecurringTasks 
 } from '../utils/storage';
 import { soundManager } from '../utils/sound';
 import { unblockDependentTasks } from '../utils/taskDependencies';
@@ -78,6 +79,31 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     saveTasksToStorage(tasks);
   }, [tasks]);
+
+  // Automatically roll over due recurring tasks from done to ready
+  useEffect(() => {
+    const checkRollover = () => {
+      setTasks(prev => {
+        const { tasks: updated, changed } = rolloverRecurringTasks(prev);
+        return changed ? updated : prev;
+      });
+    };
+
+    checkRollover();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkRollover();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    const interval = setInterval(checkRollover, 30000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(interval);
+    };
+  }, []);
 
   const toggleSound = () => {
     setSoundEnabled(prev => !prev);
@@ -393,9 +419,16 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Move task back to the Ready roulette pool
   const moveToReadyPool = useCallback((taskId: string) => {
+    soundManager.playTimerTick();
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
-        return { ...t, status: 'ready' as TaskStatus };
+        return { 
+          ...t, 
+          status: 'ready' as TaskStatus,
+          completedAt: undefined,
+          nextDueDate: undefined,
+          microSteps: t.microSteps ? t.microSteps.map(s => ({ ...s, completed: false })) : []
+        };
       }
       return t;
     }));
@@ -437,7 +470,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const nextDue = calculateNextDueDate(t.recurrence);
             return {
               ...t,
-              status: 'ready' as TaskStatus,
+              status: 'completed' as TaskStatus,
+              completedAt: new Date().toISOString(),
               nextDueDate: nextDue,
               lastCompletedAt: new Date().toISOString(),
               microSteps: t.microSteps.map(s => ({ ...s, completed: false }))

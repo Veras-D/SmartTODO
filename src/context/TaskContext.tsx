@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import confetti from 'canvas-confetti';
-import { Task, EnergyLevel, RouletteFilter, TaskStatus } from '../types/task';
+import { Task, Project, EnergyLevel, RouletteFilter, TaskStatus } from '../types/task';
 import { 
   loadStoredTasks, 
   saveTasksToStorage, 
+  loadStoredProjects,
+  saveProjectsToStorage,
   loadSoundSetting, 
   saveSoundSetting, 
   generateId,
@@ -39,6 +41,16 @@ interface TaskContextType {
   restoreFromColdStorage: (id: string) => void;
   declareBankruptcy: () => number;
   
+  // Projects
+  projects: Project[];
+  createProject: (data: { title: string; description?: string; color?: string; taskIds?: string[] }) => Project;
+  updateProject: (id: string, data: Partial<Project>) => void;
+  deleteProject: (id: string) => void;
+  reorderProjectTasks: (projectId: string, taskIds: string[]) => void;
+  addTaskToProject: (projectId: string, taskId: string) => void;
+  removeTaskFromProject: (projectId: string, taskId: string) => void;
+  createAndAddTaskToProject: (projectId: string, title: string) => Task;
+
   // Pomodoro Timer State & Actions
   timerSecondsLeft: number;
   timerTargetDuration: number;
@@ -64,10 +76,16 @@ const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
 export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tasks, setTasks] = useState<Task[]>(() => loadStoredTasks());
+  const [projects, setProjects] = useState<Project[]>(() => loadStoredProjects());
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [filter, setFilter] = useState<RouletteFilter>('all');
   const [isRolling, setIsRolling] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => loadSoundSetting());
+
+  // Sync projects to local storage
+  useEffect(() => {
+    saveProjectsToStorage(projects);
+  }, [projects]);
 
   // Sync sound setting
   useEffect(() => {
@@ -616,6 +634,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Create or Update task details in SMART-ify lounge
   const createOrUpdateTask = useCallback((taskData: Partial<Task> & { title: string }) => {
+    let newId: string | null = null;
     setTasks(prev => {
       const existing = prev.find(t => t.id === taskData.id);
       if (existing) {
@@ -625,9 +644,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         return updated;
       } else {
+        newId = generateId();
         const newTask: Task = {
-          id: generateId(),
+          id: newId,
           title: taskData.title,
+          projectId: taskData.projectId,
           definitionOfDone: taskData.definitionOfDone || '',
           notes: taskData.notes || '',
           status: (taskData.status || 'ready') as TaskStatus,
@@ -643,6 +664,20 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return [newTask, ...prev];
       }
     });
+
+    const targetId = taskData.id || newId;
+    if (targetId && taskData.projectId !== undefined) {
+      setProjects(prev => prev.map(p => {
+        if (taskData.projectId && p.id === taskData.projectId) {
+          if (!p.taskIds.includes(targetId)) {
+            return { ...p, taskIds: [...p.taskIds, targetId] };
+          }
+        } else if (p.taskIds.includes(targetId)) {
+          return { ...p, taskIds: p.taskIds.filter(id => id !== targetId) };
+        }
+        return p;
+      }));
+    }
   }, []);
 
   // Delete Task
@@ -651,10 +686,96 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const remaining = prev.filter(t => t.id !== id);
       return unblockDependentTasks(id, remaining);
     });
+    setProjects(prev => prev.map(p => ({
+      ...p,
+      taskIds: p.taskIds.filter(taskId => taskId !== id)
+    })));
     if (activeTaskId === id) {
       setActiveTaskId(null);
     }
   }, [activeTaskId]);
+
+  // Project Actions
+  const createProject = useCallback((data: { title: string; description?: string; color?: string; taskIds?: string[] }): Project => {
+    const newProject: Project = {
+      id: 'proj-' + Math.random().toString(36).substring(2, 9) + '-' + Date.now().toString(36),
+      title: data.title.trim(),
+      description: data.description?.trim() || '',
+      color: data.color || 'indigo',
+      taskIds: data.taskIds || [],
+      status: 'active',
+      createdAt: new Date().toISOString()
+    };
+    setProjects(prev => [newProject, ...prev]);
+
+    if (data.taskIds && data.taskIds.length > 0) {
+      setTasks(prev => prev.map(t => {
+        if (data.taskIds!.includes(t.id)) {
+          return { ...t, projectId: newProject.id };
+        }
+        return t;
+      }));
+    }
+
+    return newProject;
+  }, []);
+
+  const updateProject = useCallback((id: string, data: Partial<Project>) => {
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
+  }, []);
+
+  const deleteProject = useCallback((id: string) => {
+    setProjects(prev => prev.filter(p => p.id !== id));
+    setTasks(prev => prev.map(t => t.projectId === id ? { ...t, projectId: undefined } : t));
+  }, []);
+
+  const reorderProjectTasks = useCallback((projectId: string, newTaskIds: string[]) => {
+    setProjects(prev => prev.map(p => p.id === projectId ? { ...p, taskIds: newTaskIds } : p));
+  }, []);
+
+  const addTaskToProject = useCallback((projectId: string, taskId: string) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id === projectId) {
+        if (p.taskIds.includes(taskId)) return p;
+        return { ...p, taskIds: [...p.taskIds, taskId] };
+      }
+      return p;
+    }));
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, projectId } : t));
+  }, []);
+
+  const removeTaskFromProject = useCallback((projectId: string, taskId: string) => {
+    setProjects(prev => prev.map(p => {
+      if (p.id === projectId) {
+        return { ...p, taskIds: p.taskIds.filter(id => id !== taskId) };
+      }
+      return p;
+    }));
+    setTasks(prev => prev.map(t => (t.id === taskId && t.projectId === projectId) ? { ...t, projectId: undefined } : t));
+  }, []);
+
+  const createAndAddTaskToProject = useCallback((projectId: string, title: string): Task => {
+    const newTask: Task = {
+      id: generateId(),
+      title: title.trim(),
+      status: 'ready',
+      projectId: projectId,
+      energyLevel: 'medium',
+      estimatedMinutes: 25,
+      microSteps: [],
+      blockers: [],
+      skipCount: 0,
+      createdAt: new Date().toISOString()
+    };
+    setTasks(prev => [newTask, ...prev]);
+    setProjects(prev => prev.map(p => {
+      if (p.id === projectId) {
+        return { ...p, taskIds: [...p.taskIds, newTask.id] };
+      }
+      return p;
+    }));
+    return newTask;
+  }, []);
 
   // Restore from Cold Storage
   const restoreFromColdStorage = useCallback((id: string) => {
@@ -725,6 +846,14 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteTask,
         restoreFromColdStorage,
         declareBankruptcy,
+        projects,
+        createProject,
+        updateProject,
+        deleteProject,
+        reorderProjectTasks,
+        addTaskToProject,
+        removeTaskFromProject,
+        createAndAddTaskToProject,
         unblockedReadyTasks,
         unblockedInboxTasks,
         readyTasks,

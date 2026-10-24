@@ -1,8 +1,9 @@
-import { Task } from '../types/task';
+import { Task, Project } from '../types/task';
 
 const STORAGE_KEY = 'smart_todo_tasks_v2';
 const LEGACY_STORAGE_KEY = 'smart_todo_tasks_v1';
 const SOUND_SETTING_KEY = 'smart_todo_sound_enabled';
+const PROJECTS_STORAGE_KEY = 'smart_todo_projects_v1';
 
 export function loadStoredTasks(): Task[] {
   try {
@@ -60,6 +61,26 @@ export function saveSoundSetting(enabled: boolean): void {
     localStorage.setItem(SOUND_SETTING_KEY, enabled ? 'true' : 'false');
   } catch {
     // ignore
+  }
+}
+
+export function loadStoredProjects(): Project[] {
+  try {
+    const raw = localStorage.getItem(PROJECTS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Project[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error('Failed to load projects from localStorage:', error);
+    return [];
+  }
+}
+
+export function saveProjectsToStorage(projects: Project[]): void {
+  try {
+    localStorage.setItem(PROJECTS_STORAGE_KEY, JSON.stringify(projects));
+  } catch (error) {
+    console.error('Failed to save projects to localStorage:', error);
   }
 }
 

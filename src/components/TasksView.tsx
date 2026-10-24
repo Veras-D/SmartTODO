@@ -19,7 +19,8 @@ import {
   Plus,
   Repeat,
   Link,
-  RotateCcw
+  RotateCcw,
+  FolderKanban
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Task, EnergyLevel, TaskImportance, GTDContext, Blocker, RecurrenceInterval } from '../types/task';
@@ -57,6 +58,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
 }) => {
   const { 
     tasks, 
+    projects,
     addQuickTask, 
     createOrUpdateTask, 
     deleteTask,
@@ -64,6 +66,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
     moveToInbox,
     moveToReadyPool
   } = useTaskContext();
+
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('all');
 
   // Determine default tab by priority:
   // 1. Inbox (if any tasks in inbox)
@@ -112,6 +116,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel>('medium');
   const [estimatedMinutes, setEstimatedMinutes] = useState<number>(25);
   const [recurrence, setRecurrence] = useState<RecurrenceInterval>('none');
+  const [gtdProjectId, setGtdProjectId] = useState<string>('');
   const [newStepText, setNewStepText] = useState('');
   const [newBlockerText, setNewBlockerText] = useState('');
 
@@ -142,6 +147,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     setEnergyLevel(task.energyLevel || 'medium');
     setEstimatedMinutes(task.estimatedMinutes || 25);
     setRecurrence(task.recurrence || 'none');
+    setGtdProjectId(task.projectId || '');
     setNewStepText('');
     setNewBlockerText('');
   };
@@ -154,6 +160,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     createOrUpdateTask({
       id: task.id,
       title: task.title,
+      projectId: gtdProjectId || undefined,
       nextAction: nextAction.trim() || undefined,
       gtdContext,
       definitionOfDone: definitionOfDone.trim() || undefined,
@@ -229,6 +236,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const doneCount = tasks.filter(t => t.status === 'completed').length;
 
   const filteredTasks = tasks.filter(t => {
+    if (selectedProjectFilter !== 'all' && t.projectId !== selectedProjectFilter) return false;
     if (activeTab === 'inbox') return t.status === 'inbox';
     if (activeTab === 'in_progress') return t.status === 'in_progress';
     if (activeTab === 'ready') return t.status === 'ready';
@@ -369,6 +377,40 @@ export const TasksView: React.FC<TasksViewProps> = ({
         </button>
       </div>
 
+      {/* Optional Project Filter Bar */}
+      {projects.length > 0 && (
+        <div className="flex items-center gap-1.5 mb-4 overflow-x-auto no-scrollbar pb-1 text-xs">
+          <span className="text-[11px] text-slate-500 font-medium px-1 flex items-center gap-1 shrink-0">
+            <FolderKanban className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Project:</span>
+          </span>
+          <button
+            onClick={() => setSelectedProjectFilter('all')}
+            className={`px-2.5 py-1 rounded-lg text-[11px] transition shrink-0 ${
+              selectedProjectFilter === 'all'
+                ? 'bg-slate-800 text-white font-medium border border-slate-700'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            All
+          </button>
+          {projects.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setSelectedProjectFilter(p.id)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] transition flex items-center gap-1.5 shrink-0 border ${
+                selectedProjectFilter === p.id
+                  ? 'bg-indigo-950/70 text-indigo-300 border-indigo-700 font-medium shadow-sm'
+                  : 'bg-slate-900/40 text-slate-400 border-slate-800/80 hover:text-slate-200'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
+              <span>{p.title}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Refine Inbox Banner */}
       {activeTab === 'inbox' && inboxCount > 0 && (
         <div className="flex items-center justify-between p-3.5 rounded-2xl bg-indigo-950/25 border border-indigo-800/40 mb-4 animate-fade-in shadow-sm">
@@ -437,6 +479,16 @@ export const TasksView: React.FC<TasksViewProps> = ({
                           {task.importance === 'high' ? '🔥 High' : task.importance === 'medium' ? '⚡ Med' : '🌱 Low'}
                         </span>
                       )}
+                      {task.projectId && (() => {
+                        const project = projects.find(p => p.id === task.projectId);
+                        if (!project) return null;
+                        return (
+                          <span className="text-[10px] font-medium text-indigo-300 bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-900/50 flex items-center gap-1 shadow-sm">
+                            <FolderKanban className="w-3 h-3 text-indigo-400" />
+                            <span>{project.title}</span>
+                          </span>
+                        );
+                      })()}
                       {task.energyLevel === 'low' && (
                         <span className="text-[10px] text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-900/40">
                           Low Spoon
@@ -725,6 +777,27 @@ export const TasksView: React.FC<TasksViewProps> = ({
                           ))}
                         </div>
                       </div>
+
+                      {projects.length > 0 && (
+                        <div className="sm:col-span-2">
+                          <label className="text-[11px] font-medium text-slate-400 block mb-1 flex items-center gap-1">
+                            <FolderKanban className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>Assigned Project</span>
+                          </label>
+                          <select
+                            value={gtdProjectId}
+                            onChange={(e) => setGtdProjectId(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700/80 text-xs text-white focus:outline-none focus:border-indigo-500"
+                          >
+                            <option value="">No Project (Standalone task)</option>
+                            {projects.map(p => (
+                              <option key={p.id} value={p.id}>
+                                📁 {p.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
 
                     {/* Blockers / Waiting For */}

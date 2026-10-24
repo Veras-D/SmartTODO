@@ -8,7 +8,8 @@ import {
   VolumeX, 
   AlertOctagon, 
   Download,
-  CheckCircle2
+  CheckCircle2,
+  FolderKanban
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 
@@ -16,6 +17,7 @@ interface NavbarProps {
   currentTab: 'focus' | 'tasks';
   setCurrentTab: (tab: 'focus' | 'tasks') => void;
   onOpenQuickCapture: () => void;
+  onOpenProjects: () => void;
   onOpenBankruptcy: () => void;
 }
 
@@ -23,6 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentTab,
   setCurrentTab,
   onOpenQuickCapture,
+  onOpenProjects,
   onOpenBankruptcy
 }) => {
   const { 
@@ -32,6 +35,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     unblockedReadyTasks,
     inProgressTasks,
     tasks,
+    projects,
     timerIsRunning,
     timerSecondsLeft
   } = useTaskContext();
@@ -125,8 +129,22 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
-        {/* Right Actions: + Add Task & Minimal Menu */}
+        {/* Right Actions: Projects, + Add Task & Minimal Menu */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={onOpenProjects}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800/80 text-xs font-medium transition active:scale-95 shadow-sm"
+            title="Projects (Press P)"
+          >
+            <FolderKanban className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Projects</span>
+            {projects.length > 0 && (
+              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-400 font-mono">
+                {projects.length}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={onOpenQuickCapture}
             className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition active:scale-95"
@@ -147,6 +165,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {isMenuOpen && (
               <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl py-1.5 text-xs z-50 animate-fade-in">
+                <button
+                  onClick={() => {
+                    onOpenProjects();
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2 text-slate-300 hover:bg-slate-800 transition text-left"
+                >
+                  <FolderKanban className="w-4 h-4 text-indigo-400" />
+                  <span>Projects (P)</span>
+                </button>
+
                 <button
                   onClick={() => {
                     toggleSound();

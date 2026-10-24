@@ -14,7 +14,8 @@ import {
   Play,
   Clock,
   Link,
-  ArrowRight
+  ArrowRight,
+  FolderKanban
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { PomodoroTimer } from './PomodoroTimer';
@@ -44,6 +45,7 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
     addQuickTask,
     createOrUpdateTask,
     tasks,
+    projects,
     startTaskDirectly,
     moveToInbox
   } = useTaskContext();
@@ -377,7 +379,17 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                 <span>Current Mission</span>
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {activeTask.projectId && (() => {
+                  const project = projects.find(p => p.id === activeTask.projectId);
+                  if (!project) return null;
+                  return (
+                    <span className="text-[11px] font-medium text-indigo-300 bg-indigo-950/50 px-2 py-0.5 rounded-md border border-indigo-900/50 flex items-center gap-1 shadow-sm">
+                      <FolderKanban className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>{project.title}</span>
+                    </span>
+                  );
+                })()}
                 {tasksBlockedByActive.length > 0 && (
                   <span 
                     className="text-[11px] text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-800/40 flex items-center gap-1 font-medium"

@@ -5,6 +5,7 @@ import { FocusHUD } from './components/FocusHUD';
 import { TasksView } from './components/TasksView';
 import { QuickCaptureModal } from './components/QuickCaptureModal';
 import { BacklogBankruptcyModal } from './components/BacklogBankruptcyModal';
+import { ProjectsModal } from './components/ProjectsModal';
 
 const MainLayout: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<'focus' | 'tasks'>('focus');
@@ -18,8 +19,9 @@ const MainLayout: React.FC = () => {
   // Modals state
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const [isBankruptcyOpen, setIsBankruptcyOpen] = useState(false);
+  const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
 
-  // Global hotkey: 'N' to open quick capture
+  // Global hotkeys: 'N' for quick capture, 'P' for projects
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
@@ -28,6 +30,9 @@ const MainLayout: React.FC = () => {
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         setIsQuickCaptureOpen(true);
+      } else if (e.key === 'p' || e.key === 'P') {
+        e.preventDefault();
+        setIsProjectsModalOpen(true);
       }
     };
 
@@ -47,6 +52,7 @@ const MainLayout: React.FC = () => {
           }
         }}
         onOpenQuickCapture={() => setIsQuickCaptureOpen(true)}
+        onOpenProjects={() => setIsProjectsModalOpen(true)}
         onOpenBankruptcy={() => setIsBankruptcyOpen(true)}
       />
 
@@ -64,10 +70,16 @@ const MainLayout: React.FC = () => {
         </div>
       </main>
 
-      {/* Clean Modals for Quick Capture & Reset */}
+      {/* Clean Modals for Quick Capture, Projects & Reset */}
       <QuickCaptureModal
         isOpen={isQuickCaptureOpen}
         onClose={() => setIsQuickCaptureOpen(false)}
+      />
+
+      <ProjectsModal
+        isOpen={isProjectsModalOpen}
+        onClose={() => setIsProjectsModalOpen(false)}
+        onSelectTaskForFocus={() => setCurrentTab('focus')}
       />
 
       <BacklogBankruptcyModal

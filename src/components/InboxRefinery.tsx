@@ -11,7 +11,8 @@ import {
   X, 
   Inbox,
   AlertCircle,
-  Link
+  Link,
+  FolderKanban
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Task, EnergyLevel, TaskImportance, GTDContext, RecurrenceInterval, Blocker } from '../types/task';
@@ -44,6 +45,7 @@ interface InboxRefineryProps {
 export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFocus }) => {
   const { 
     tasks, 
+    projects,
     createOrUpdateTask, 
     deleteTask 
   } = useTaskContext();
@@ -63,6 +65,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
   const [importance, setImportance] = useState<TaskImportance>('medium');
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel>('medium');
   const [estimatedMinutes, setEstimatedMinutes] = useState<number>(25);
+  const [projectId, setProjectId] = useState<string>('');
   const [newBlockerText, setNewBlockerText] = useState('');
   const [blockers, setBlockers] = useState<Blocker[]>([]);
 
@@ -83,6 +86,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
       setImportance(currentTask.importance || 'medium');
       setEnergyLevel(currentTask.energyLevel || 'medium');
       setEstimatedMinutes(currentTask.estimatedMinutes || 25);
+      setProjectId(currentTask.projectId || '');
       setBlockers(currentTask.blockers || []);
       setNewBlockerText('');
     }
@@ -130,6 +134,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
       importance,
       energyLevel,
       estimatedMinutes,
+      projectId: projectId || undefined,
       blockers,
       status: 'inbox'
     });
@@ -154,6 +159,7 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
       importance,
       energyLevel,
       estimatedMinutes,
+      projectId: projectId || undefined,
       blockers,
       status: hasUnresolved ? 'blocked' : 'ready'
     });
@@ -379,6 +385,27 @@ export const InboxRefinery: React.FC<InboxRefineryProps> = ({ onClose, onStartFo
               ))}
             </div>
           </div>
+
+          {projects.length > 0 && (
+            <div className="sm:col-span-2">
+              <label className="text-[11px] font-medium text-slate-400 block mb-1 flex items-center gap-1">
+                <FolderKanban className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Assigned Project</span>
+              </label>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700/80 text-xs text-white focus:outline-none focus:border-indigo-500"
+              >
+                <option value="">No Project (Standalone task)</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>
+                    📁 {p.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* 4. Blockers (Optional) */}

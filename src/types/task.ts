@@ -30,6 +30,7 @@ export interface Blocker {
 export interface Task {
   id: string;
   title: string;
+  projectId?: string;         // Linked Project ID
   nextAction?: string;        // GTD: Next physical actionable step
   gtdContext?: GTDContext;    // GTD Context (@computer, @phone, etc.)
   desiredOutcome?: string;    // GTD: Desired outcome / definition of done
@@ -54,3 +55,14 @@ export interface Task {
 }
 
 export type RouletteFilter = 'all' | 'low_energy' | 'deep_focus' | 'quick_win';
+
+export interface Project {
+  id: string;
+  title: string;
+  description?: string;
+  color?: string; // 'indigo' | 'emerald' | 'amber' | 'rose' | 'purple' | 'sky' | 'cyan'
+  taskIds: string[]; // Ordered list of task IDs in this project
+  status: 'active' | 'completed' | 'archived';
+  createdAt: string;
+  completedAt?: string;
+}

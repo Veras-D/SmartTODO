@@ -3,8 +3,6 @@ import {
   FolderKanban, 
   Plus, 
   Play, 
-  ArrowUp, 
-  ArrowDown, 
   Trash2, 
   Edit3, 
   CheckCircle2, 
@@ -20,7 +18,8 @@ import {
   X,
   ListTodo,
   Circle,
-  Search
+  Search,
+  GripVertical
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Project, Task } from '../types/task';
@@ -54,6 +53,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
   const [isEditing, setIsEditing] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
+
+  // Drag and drop state for task reordering
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Unified Searchable Task Input (Search existing to link, or create new)
   const [taskQuery, setTaskQuery] = useState('');
@@ -163,18 +166,37 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
     setIsEditing(false);
   };
 
-  // Reordering tasks in project
-  const handleMoveTask = (index: number, direction: 'up' | 'down') => {
-    if (!activeProject) return;
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= activeProject.taskIds.length) return;
+  // Drag and drop reordering handlers
+  const handleDragStart = (index: number, e: React.DragEvent) => {
+    setDraggedIndex(index);
+    e.dataTransfer.setData('text/plain', String(index));
+    e.dataTransfer.effectAllowed = 'move';
+  };
 
-    const newTaskIds = [...activeProject.taskIds];
-    const temp = newTaskIds[index];
-    newTaskIds[index] = newTaskIds[targetIndex];
-    newTaskIds[targetIndex] = temp;
+  const handleDragOver = (index: number, e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
 
-    reorderProjectTasks(activeProject.id, newTaskIds);
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (targetIndex: number, e: React.DragEvent) => {
+    e.preventDefault();
+    if (draggedIndex === null || !activeProject) return;
+    if (draggedIndex !== targetIndex) {
+      const newTaskIds = [...activeProject.taskIds];
+      const [movedId] = newTaskIds.splice(draggedIndex, 1);
+      newTaskIds.splice(targetIndex, 0, movedId);
+      reorderProjectTasks(activeProject.id, newTaskIds);
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   // Unified Task Action: Link existing task
@@ -669,11 +691,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
             </span>
           </div>
           <span className="text-[11px] text-slate-400">
-            Ordered sequence (Use ▲ ▼ to reorder)
+            Ordered sequence (Drag to reorder)
           </span>
         </div>
 
-        {/* Task List */}
+        {/* Task List (Drag & Drop Reordering) */}
         {projectTasks.length === 0 ? (
           <div className="py-12 px-6 rounded-3xl bg-slate-900/40 border border-dashed border-slate-800 text-center">
             <p className="text-xs text-slate-400 mb-1">
@@ -688,43 +710,38 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
             {projectTasks.map((task, index) => {
               const isCompleted = task.status === 'completed';
               const isInProgress = task.status === 'in_progress';
+              const isDraggingThis = draggedIndex === index;
+              const isDragOverThis = dragOverIndex === index && draggedIndex !== index;
 
               return (
                 <div
                   key={task.id}
-                  className={`p-3 sm:p-3.5 rounded-2xl border transition flex items-center justify-between gap-3 ${
-                    isCompleted 
-                      ? 'bg-slate-900/30 border-slate-900 text-slate-500' 
+                  draggable
+                  onDragStart={(e) => handleDragStart(index, e)}
+                  onDragOver={(e) => handleDragOver(index, e)}
+                  onDragEnd={handleDragEnd}
+                  onDrop={(e) => handleDrop(index, e)}
+                  className={`p-3 sm:p-3.5 rounded-2xl border transition-all duration-150 flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing select-none group ${
+                    isDraggingThis
+                      ? 'opacity-30 border-dashed border-indigo-500 bg-indigo-950/20 scale-[0.99]'
+                      : isDragOverThis
+                      ? 'border-indigo-500 bg-indigo-950/40 shadow-lg ring-1 ring-indigo-500 scale-[1.01]'
+                      : isCompleted 
+                      ? 'bg-slate-900/30 border-slate-900 text-slate-500 hover:border-slate-800' 
                       : isInProgress
-                      ? 'bg-indigo-950/20 border-indigo-500/40 shadow-sm'
+                      ? 'bg-indigo-950/20 border-indigo-500/40 shadow-sm hover:border-indigo-500/60'
                       : 'bg-slate-900 border-slate-800 hover:border-slate-700'
                   }`}
                 >
-                  {/* Left: Reorder Controls + Order Number + Status Checkbox */}
-                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  {/* Left: Drag Handle + Order Number + Status Checkbox + Details */}
+                  <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
                     
-                    {/* Move Up / Down Buttons */}
-                    <div className="flex flex-col gap-0.5 shrink-0">
-                      <button
-                        onClick={() => handleMoveTask(index, 'up')}
-                        disabled={index === 0}
-                        className={`p-1 rounded text-slate-400 transition ${
-                          index === 0 ? 'opacity-20 cursor-not-allowed' : 'hover:bg-slate-800 hover:text-white'
-                        }`}
-                        title="Move Up"
-                      >
-                        <ArrowUp className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => handleMoveTask(index, 'down')}
-                        disabled={index === projectTasks.length - 1}
-                        className={`p-1 rounded text-slate-400 transition ${
-                          index === projectTasks.length - 1 ? 'opacity-20 cursor-not-allowed' : 'hover:bg-slate-800 hover:text-white'
-                        }`}
-                        title="Move Down"
-                      >
-                        <ArrowDown className="w-3 h-3" />
-                      </button>
+                    {/* Drag Grip Handle */}
+                    <div 
+                      className="p-1 -ml-1 text-slate-600 group-hover:text-slate-400 transition shrink-0" 
+                      title="Drag to reorder"
+                    >
+                      <GripVertical className="w-4 h-4" />
                     </div>
 
                     {/* Sequential step badge */}
@@ -734,7 +751,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
 
                     {/* Complete checkbox */}
                     <button
-                      onClick={() => handleToggleTaskStatus(task)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleTaskStatus(task);
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
                       className={`p-1 rounded-lg transition shrink-0 ${
                         isCompleted ? 'text-emerald-400 hover:text-slate-400' : 'text-slate-500 hover:text-slate-300'
                       }`}
@@ -773,10 +794,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
                   </div>
 
                   {/* Right Actions: Play Focus, Unlink, Delete */}
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div 
+                    className="flex items-center gap-1 shrink-0"
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
                     {!isCompleted && (
                       <button
-                        onClick={() => handleStartTask(task.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartTask(task.id);
+                        }}
                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-medium transition active:scale-95"
                         title="Start focusing on this task now"
                       >

@@ -14,7 +14,6 @@ import {
   Clock, 
   Inbox, 
   Dices,
-  Check,
   ChevronDown,
   ChevronRight,
   ArrowLeft,
@@ -24,19 +23,6 @@ import {
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Project, Task } from '../types/task';
-
-export const PROJECT_COLOR_KEYS = ['indigo', 'emerald', 'sky', 'amber', 'rose', 'purple', 'cyan'] as const;
-export type ProjectColor = typeof PROJECT_COLOR_KEYS[number];
-
-export const PROJECT_COLORS: Record<ProjectColor, { bg: string; text: string; border: string; dot: string; ring: string }> = {
-  indigo: { bg: 'bg-indigo-950/40', text: 'text-indigo-300', border: 'border-indigo-800/50', dot: 'bg-indigo-400', ring: 'ring-indigo-500/30' },
-  emerald: { bg: 'bg-emerald-950/40', text: 'text-emerald-300', border: 'border-emerald-800/50', dot: 'bg-emerald-400', ring: 'ring-emerald-500/30' },
-  sky: { bg: 'bg-sky-950/40', text: 'text-sky-300', border: 'border-sky-800/50', dot: 'bg-sky-400', ring: 'ring-sky-500/30' },
-  amber: { bg: 'bg-amber-950/40', text: 'text-amber-300', border: 'border-amber-800/50', dot: 'bg-amber-400', ring: 'ring-amber-500/30' },
-  rose: { bg: 'bg-rose-950/40', text: 'text-rose-300', border: 'border-rose-800/50', dot: 'bg-rose-400', ring: 'ring-rose-500/30' },
-  purple: { bg: 'bg-purple-950/40', text: 'text-purple-300', border: 'border-purple-800/50', dot: 'bg-purple-400', ring: 'ring-purple-500/30' },
-  cyan: { bg: 'bg-cyan-950/40', text: 'text-cyan-300', border: 'border-cyan-800/50', dot: 'bg-cyan-400', ring: 'ring-cyan-500/30' }
-};
 
 interface ProjectsViewProps {
   onSelectTaskForFocus?: () => void;
@@ -67,7 +53,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
   const [isEditing, setIsEditing] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formColor, setFormColor] = useState<ProjectColor>('indigo');
 
   // Task creation inside active project
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -136,15 +121,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
     if (isEditing && activeProject) {
       updateProject(activeProject.id, {
         title: formTitle.trim(),
-        description: formDescription.trim(),
-        color: formColor
+        description: formDescription.trim()
       });
       setIsEditing(false);
     } else {
       const created = createProject({
         title: formTitle.trim(),
-        description: formDescription.trim(),
-        color: formColor
+        description: formDescription.trim()
       });
       // Enter the newly created project immediately
       setSelectedProjectId(created.id);
@@ -159,7 +142,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
     if (e) e.stopPropagation();
     setFormTitle(project.title);
     setFormDescription(project.description || '');
-    setFormColor((project.color as ProjectColor) || 'indigo');
     setIsEditing(true);
     setIsCreatingNew(false);
   };
@@ -167,7 +149,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
   const startCreatingNew = () => {
     setFormTitle('');
     setFormDescription('');
-    setFormColor('indigo');
     setIsCreatingNew(true);
     setIsEditing(false);
   };
@@ -337,30 +318,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Color Theme
-              </label>
-              <div className="flex items-center gap-2">
-                {PROJECT_COLOR_KEYS.map(c => {
-                  const style = PROJECT_COLORS[c];
-                  const isSelected = formColor === c;
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setFormColor(c)}
-                      className={`w-7 h-7 rounded-xl ${style.dot} transition flex items-center justify-center ${
-                        isSelected ? `ring-2 ring-white scale-110 shadow-md` : 'opacity-60 hover:opacity-100 hover:scale-105'
-                      }`}
-                    >
-                      {isSelected && <Check className="w-3.5 h-3.5 text-slate-950 font-bold" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
@@ -401,9 +358,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
           /* Projects Grid: Clickable Project Cards (NO tasks shown on this page!) */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {projects.map(project => {
-              const colorKey = (project.color as ProjectColor) || 'indigo';
-              const colorStyle = PROJECT_COLORS[colorKey] || PROJECT_COLORS.indigo;
-              
               // Project tasks calculation
               const pTasks = project.taskIds
                 .map(id => tasks.find(t => t.id === id))
@@ -419,13 +373,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
                 <div
                   key={project.id}
                   onClick={() => setSelectedProjectId(project.id)}
-                  className={`p-5 rounded-3xl bg-slate-900/90 border ${colorStyle.border} hover:border-slate-600 transition-all cursor-pointer group flex flex-col justify-between hover:shadow-xl hover:-translate-y-0.5 relative overflow-hidden`}
+                  className="p-5 rounded-3xl bg-slate-900/90 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer group flex flex-col justify-between hover:shadow-xl hover:-translate-y-0.5 relative overflow-hidden"
                 >
                   <div>
-                    {/* Top row: Color pill, task count badge, & action buttons */}
+                    {/* Top row: Icon, task count badge, & action buttons */}
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2">
-                        <span className={`w-3 h-3 rounded-full ${colorStyle.dot} ring-4 ${colorStyle.bg}`} />
+                        <div className="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                          <FolderKanban className="w-3.5 h-3.5" />
+                        </div>
                         <span className="text-[11px] font-semibold text-slate-400">
                           {totalTasksCount === 0 ? '0 tasks' : `${pCompletedCount}/${totalTasksCount} done`}
                         </span>
@@ -468,7 +424,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
                     {/* Progress Bar */}
                     <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden mb-2.5">
                       <div 
-                        className={`h-full rounded-full transition-all duration-300 ${colorStyle.dot}`}
+                        className="h-full rounded-full transition-all duration-300 bg-indigo-500"
                         style={{ width: `${pProgress}%` }}
                       />
                     </div>
@@ -508,9 +464,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
   // =========================================================================
   // VIEW 2: PROJECT DETAIL (Inside a selected project -> Tasks list & adding)
   // =========================================================================
-  const colorKey = (activeProject.color as ProjectColor) || 'indigo';
-  const colorStyle = PROJECT_COLORS[colorKey] || PROJECT_COLORS.indigo;
-
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 animate-fade-in">
       
@@ -570,30 +523,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                Color Theme
-              </label>
-              <div className="flex items-center gap-2">
-                {PROJECT_COLOR_KEYS.map(c => {
-                  const style = PROJECT_COLORS[c];
-                  const isSelected = formColor === c;
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setFormColor(c)}
-                      className={`w-7 h-7 rounded-xl ${style.dot} transition flex items-center justify-center ${
-                        isSelected ? `ring-2 ring-white scale-110 shadow-md` : 'opacity-60 hover:opacity-100 hover:scale-105'
-                      }`}
-                    >
-                      {isSelected && <Check className="w-3.5 h-3.5 text-slate-950 font-bold" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
@@ -612,10 +541,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
           </form>
         ) : (
           /* Project Overview Card */
-          <div className={`p-6 rounded-3xl bg-slate-900 border ${colorStyle.border} shadow-lg relative overflow-hidden`}>
+          <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-lg relative overflow-hidden">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-3">
-                <span className={`w-4 h-4 rounded-full ${colorStyle.dot} mt-1.5 ring-4 ${colorStyle.bg} shrink-0`} />
+                <div className="w-10 h-10 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center shadow-inner shrink-0 mt-0.5">
+                  <FolderKanban className="w-5 h-5" />
+                </div>
                 <div>
                   <h1 className="text-xl font-extrabold text-white tracking-tight">
                     {activeProject.title}
@@ -658,7 +589,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
               </div>
               <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-300 ${colorStyle.dot}`}
+                  className="h-full rounded-full transition-all duration-300 bg-indigo-500"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>

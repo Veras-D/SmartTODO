@@ -3,12 +3,12 @@ import { TaskProvider } from './context/TaskContext';
 import { Navbar } from './components/Navbar';
 import { FocusHUD } from './components/FocusHUD';
 import { TasksView } from './components/TasksView';
+import { ProjectsView } from './components/ProjectsView';
 import { QuickCaptureModal } from './components/QuickCaptureModal';
 import { BacklogBankruptcyModal } from './components/BacklogBankruptcyModal';
-import { ProjectsModal } from './components/ProjectsModal';
 
 const MainLayout: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<'focus' | 'tasks'>('focus');
+  const [currentTab, setCurrentTab] = useState<'focus' | 'tasks' | 'projects'>('focus');
   const [tasksNavKey, setTasksNavKey] = useState<number>(0);
   
   const handleOpenTasksTab = () => {
@@ -19,9 +19,8 @@ const MainLayout: React.FC = () => {
   // Modals state
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const [isBankruptcyOpen, setIsBankruptcyOpen] = useState(false);
-  const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
 
-  // Global hotkeys: 'N' for quick capture, 'P' for projects
+  // Global hotkeys: 'N' for quick capture, 'P' for projects tab
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
@@ -32,7 +31,7 @@ const MainLayout: React.FC = () => {
         setIsQuickCaptureOpen(true);
       } else if (e.key === 'p' || e.key === 'P') {
         e.preventDefault();
-        setIsProjectsModalOpen(true);
+        setCurrentTab('projects');
       }
     };
 
@@ -52,11 +51,10 @@ const MainLayout: React.FC = () => {
           }
         }}
         onOpenQuickCapture={() => setIsQuickCaptureOpen(true)}
-        onOpenProjects={() => setIsProjectsModalOpen(true)}
         onOpenBankruptcy={() => setIsBankruptcyOpen(true)}
       />
 
-      {/* Main Focus or Tasks view */}
+      {/* Main Focus, Tasks, or Projects view */}
       <main className="flex-1 pb-12">
         <div className={currentTab === 'focus' ? 'block' : 'hidden'}>
           <FocusHUD onOpenTasksTab={handleOpenTasksTab} />
@@ -68,18 +66,17 @@ const MainLayout: React.FC = () => {
             onSelectTaskForFocus={() => setCurrentTab('focus')} 
           />
         </div>
+        <div className={currentTab === 'projects' ? 'block' : 'hidden'}>
+          <ProjectsView 
+            onSelectTaskForFocus={() => setCurrentTab('focus')} 
+          />
+        </div>
       </main>
 
-      {/* Clean Modals for Quick Capture, Projects & Reset */}
+      {/* Clean Modals for Quick Capture & Reset */}
       <QuickCaptureModal
         isOpen={isQuickCaptureOpen}
         onClose={() => setIsQuickCaptureOpen(false)}
-      />
-
-      <ProjectsModal
-        isOpen={isProjectsModalOpen}
-        onClose={() => setIsProjectsModalOpen(false)}
-        onSelectTaskForFocus={() => setCurrentTab('focus')}
       />
 
       <BacklogBankruptcyModal

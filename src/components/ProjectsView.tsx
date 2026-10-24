@@ -17,7 +17,6 @@ import {
   ArrowLeft,
   X,
   ListTodo,
-  Circle,
   Search,
   GripVertical
 } from 'lucide-react';
@@ -40,7 +39,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
     addTaskToProject,
     removeTaskFromProject,
     createAndAddTaskToProject,
-    createOrUpdateTask,
     deleteTask,
     startTaskDirectly
   } = useTaskContext();
@@ -259,25 +257,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
     } else if (e.key === 'Escape') {
       setIsSuggestionsOpen(false);
       setHighlightedIndex(-1);
-    }
-  };
-
-  // Toggle task completion directly from project
-  const handleToggleTaskStatus = (task: Task) => {
-    if (task.status === 'completed') {
-      createOrUpdateTask({
-        id: task.id,
-        title: task.title,
-        status: 'ready',
-        completedAt: undefined
-      });
-    } else {
-      createOrUpdateTask({
-        id: task.id,
-        title: task.title,
-        status: 'completed',
-        completedAt: new Date().toISOString()
-      });
     }
   };
 
@@ -749,21 +728,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
                       #{index + 1}
                     </span>
 
-                    {/* Complete checkbox */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleTaskStatus(task);
-                      }}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      className={`p-1 rounded-lg transition shrink-0 ${
-                        isCompleted ? 'text-emerald-400 hover:text-slate-400' : 'text-slate-500 hover:text-slate-300'
-                      }`}
-                      title={isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
-                    >
-                      {isCompleted ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
-                    </button>
-
                     {/* Task Title & Tags */}
                     <div className="truncate flex-1 min-w-0">
                       <span className={`text-xs font-medium block truncate ${
@@ -773,6 +737,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
                       </span>
                       
                       <div className="flex items-center gap-2 mt-0.5">
+                        {isCompleted && (
+                          <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Done
+                          </span>
+                        )}
                         {isInProgress && (
                           <span className="text-[10px] font-bold text-indigo-400 flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />

@@ -28,6 +28,14 @@ interface ProjectsViewProps {
   projectsNavKey?: number;
 }
 
+interface ConfirmDialogState {
+  type: 'project' | 'task';
+  id: string;
+  title: string;
+  message: string;
+  confirmLabel: string;
+}
+
 export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus, projectsNavKey }) => {
   const {
     projects,
@@ -45,6 +53,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
 
   // Navigation state: null = Projects Overview (list of projects only, no tasks); string = Project Detail (inside a project)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
+  // Custom confirmation modal state (replaces native window.confirm)
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
 
   // Form states for project creation & editing
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -268,16 +279,16 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
     }
   };
 
-  // Delete project
+  // Delete project (Shows custom dark modal instead of ugly native browser confirm)
   const handleDeleteProject = (projectId: string, projectTitle: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    if (window.confirm(`Delete project "${projectTitle}"? Tasks will not be deleted, only unlinked.`)) {
-      deleteProject(projectId);
-      if (selectedProjectId === projectId) {
-        setSelectedProjectId(null);
-      }
-      setIsEditing(false);
-    }
+    setConfirmDialog({
+      type: 'project',
+      id: projectId,
+      title: `Delete "${projectTitle}"?`,
+      message: 'Tasks inside this project will NOT be deleted—they will stay available in your general tasks list.',
+      confirmLabel: 'Delete Project'
+    });
   };
 
   // Unlink task from active project
@@ -287,12 +298,72 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
     removeTaskFromProject(activeProject.id, taskId);
   };
 
-  // Delete task completely
+  // Delete task completely (Shows custom dark modal)
   const handleDeleteTask = (taskId: string, taskTitle: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm(`Delete task "${taskTitle}" permanently?`)) {
-      deleteTask(taskId);
+    setConfirmDialog({
+      type: 'task',
+      id: taskId,
+      title: 'Delete Task?',
+      message: `Are you sure you want to permanently delete "${taskTitle}"? This cannot be undone.`,
+      confirmLabel: 'Delete Task'
+    });
+  };
+
+  // Execute confirmed deletion
+  const handleExecuteConfirm = () => {
+    if (!confirmDialog) return;
+    if (confirmDialog.type === 'project') {
+      deleteProject(confirmDialog.id);
+      if (selectedProjectId === confirmDialog.id) {
+        setSelectedProjectId(null);
+      }
+      setIsEditing(false);
+    } else if (confirmDialog.type === 'task') {
+      deleteTask(confirmDialog.id);
     }
+    setConfirmDialog(null);
+  };
+
+  // Render Custom Confirmation Modal
+  const renderConfirmModal = () => {
+    if (!confirmDialog) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+        <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-10 h-10 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white tracking-tight">
+                {confirmDialog.title}
+              </h3>
+              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                {confirmDialog.message}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            <button
+              type="button"
+              onClick={() => setConfirmDialog(null)}
+              className="px-3.5 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleExecuteConfirm}
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/20 transition active:scale-95"
+            >
+              {confirmDialog.confirmLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // =========================================================================
@@ -516,13 +587,15 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
           </div>
         )}
 
-      </div>
-    );
-  }
+      {/* Custom Confirmation Modal */}
+      {renderConfirmModal()}
+    </div>
+  );
+}
 
-  // =========================================================================
-  // VIEW 2: PROJECT DETAIL (Inside a selected project -> Tasks list & adding)
-  // =========================================================================
+// =========================================================================
+// VIEW 2: PROJECT DETAIL (Inside a selected project -> Tasks list & adding)
+// =========================================================================
   return (
     <div className="max-w-4xl mx-auto py-8 pb-32 px-4 animate-fade-in">
       
@@ -977,6 +1050,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
         </div>
       </div>
 
+      {/* Custom Confirmation Modal */}
+      {renderConfirmModal()}
     </div>
   );
 };

@@ -19,7 +19,8 @@ import {
   ArrowLeft,
   X,
   ListTodo,
-  Circle
+  Circle,
+  Search
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Project, Task } from '../types/task';
@@ -48,18 +49,18 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
   // Navigation state: null = Projects Overview (list of projects only, no tasks); string = Project Detail (inside a project)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
-  // Form states
+  // Form states for project creation & editing
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
 
-  // Task creation inside active project
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  
-  // Custom dropdown for linking existing tasks
-  const [isLinkDropdownOpen, setIsLinkDropdownOpen] = useState(false);
-  const linkDropdownRef = useRef<HTMLDivElement>(null);
+  // Unified Searchable Task Input (Search existing to link, or create new)
+  const [taskQuery, setTaskQuery] = useState('');
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const taskSearchContainerRef = useRef<HTMLDivElement>(null);
+  const unifiedInputRef = useRef<HTMLInputElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   // Reset to overview when navbar "Projects" is clicked again or tab is switched
@@ -85,11 +86,11 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
     }
   }, [isCreatingNew, isEditing]);
 
-  // Close custom link dropdown on outside click
+  // Close search suggestions on click outside
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
-      if (linkDropdownRef.current && !linkDropdownRef.current.contains(e.target as HTMLElement)) {
-        setIsLinkDropdownOpen(false);
+      if (taskSearchContainerRef.current && !taskSearchContainerRef.current.contains(e.target as HTMLElement)) {
+        setIsSuggestionsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -105,10 +106,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
         .filter((t): t is Task => !!t)
     : [];
 
-  // Available tasks to link (tasks not in this project, excluding cold storage)
+  // Available tasks to link (tasks not in this project, excluding cold storage & completed)
   const availableTasksToLink = activeProject
     ? tasks.filter(t => !activeProject.taskIds.includes(t.id) && t.status !== 'completed' && t.status !== 'cold_storage')
     : [];
+
+  // Matching existing tasks based on search query
+  const matchingTasks = taskQuery.trim()
+    ? availableTasksToLink.filter(t => t.title.toLowerCase().includes(taskQuery.trim().toLowerCase()))
+    : availableTasksToLink;
+
+  const exactMatchingTask = taskQuery.trim()
+    ? availableTasksToLink.find(t => t.title.toLowerCase() === taskQuery.trim().toLowerCase())
+    : null;
 
   const completedCount = projectTasks.filter(t => t.status === 'completed').length;
   const progressPercent = projectTasks.length > 0 ? Math.round((completedCount / projectTasks.length) * 100) : 0;
@@ -167,19 +177,67 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
     reorderProjectTasks(activeProject.id, newTaskIds);
   };
 
-  // Add new task into project
-  const handleAddNewTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim() || !activeProject) return;
-    createAndAddTaskToProject(activeProject.id, newTaskTitle.trim());
-    setNewTaskTitle('');
+  // Unified Task Action: Link existing task
+  const handleSelectLinkTask = (taskId: string) => {
+    if (!activeProject || !taskId) return;
+    addTaskToProject(activeProject.id, taskId);
+    setTaskQuery('');
+    setIsSuggestionsOpen(false);
+    setHighlightedIndex(-1);
   };
 
-  // Link selected existing task to project
-  const handleLinkTask = (taskId: string) => {
-    if (!taskId || !activeProject) return;
-    addTaskToProject(activeProject.id, taskId);
-    setIsLinkDropdownOpen(false);
+  // Unified Task Action: Create new task in project
+  const handleCreateNewTask = (title: string) => {
+    if (!activeProject || !title.trim()) return;
+    createAndAddTaskToProject(activeProject.id, title.trim());
+    setTaskQuery('');
+    setIsSuggestionsOpen(false);
+    setHighlightedIndex(-1);
+  };
+
+  // Unified Submit handler
+  const handleUnifiedSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!activeProject || !taskQuery.trim()) return;
+
+    // 1. If an item is highlighted via keyboard:
+    if (highlightedIndex >= 0 && highlightedIndex < matchingTasks.length) {
+      handleSelectLinkTask(matchingTasks[highlightedIndex].id);
+      return;
+    }
+
+    // 2. If highlighted item is the "create new task" option:
+    if (highlightedIndex === matchingTasks.length) {
+      handleCreateNewTask(taskQuery.trim());
+      return;
+    }
+
+    // 3. If there is an exact title match among existing unlinked tasks:
+    if (exactMatchingTask) {
+      handleSelectLinkTask(exactMatchingTask.id);
+      return;
+    }
+
+    // 4. Default: If nothing matching, create as a new task!
+    handleCreateNewTask(taskQuery.trim());
+  };
+
+  // Keyboard navigation for suggestions
+  const totalOptions = matchingTasks.length + (taskQuery.trim() ? 1 : 0);
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setIsSuggestionsOpen(true);
+      setHighlightedIndex(prev => (prev + 1 >= totalOptions ? 0 : prev + 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setIsSuggestionsOpen(true);
+      setHighlightedIndex(prev => (prev - 1 < 0 ? totalOptions - 1 : prev - 1));
+    } else if (e.key === 'Escape') {
+      setIsSuggestionsOpen(false);
+      setHighlightedIndex(-1);
+    }
   };
 
   // Toggle task completion directly from project
@@ -465,7 +523,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
   // VIEW 2: PROJECT DETAIL (Inside a selected project -> Tasks list & adding)
   // =========================================================================
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 animate-fade-in">
+    <div className="max-w-4xl mx-auto py-8 pb-32 px-4 animate-fade-in">
       
       {/* 1. Back Button & Project Header */}
       <div className="mb-6">
@@ -622,7 +680,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
               No tasks inside this project yet.
             </p>
             <p className="text-[11px] text-slate-500">
-              Create a new task or link an existing one below to build this project's roadmap.
+              Search an existing task to link or type a new task name below.
             </p>
           </div>
         ) : (
@@ -750,85 +808,177 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
         )}
       </div>
 
-      {/* 3. Add Tasks Section (Inside the project view) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-900">
-        
-        {/* Option A: Create New Task for this project */}
-        <form onSubmit={handleAddNewTask} className="p-4 rounded-3xl bg-slate-900 border border-slate-800 shadow-sm flex flex-col justify-between">
-          <div>
-            <span className="text-xs font-bold text-white block mb-1 flex items-center gap-1.5">
+      {/* 3. Add Tasks Section (Searchable Unified Input to Link or Create New Task) */}
+      <div className="pt-6 border-t border-slate-900" ref={taskSearchContainerRef}>
+        <div className="p-4 sm:p-5 rounded-3xl bg-slate-900 border border-slate-800 shadow-sm relative">
+          
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
               <Plus className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Create New Task in Project</span>
+              <span>Add or Link Task to Project</span>
             </span>
-            <p className="text-[11px] text-slate-400 mb-3">
-              Appends a new task directly to this project's execution sequence.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              placeholder="What needs to be done next?..."
-              className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
-            />
-            <button
-              type="submit"
-              disabled={!newTaskTitle.trim()}
-              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold shadow transition active:scale-95"
-            >
-              Add
-            </button>
-          </div>
-        </form>
-
-        {/* Option B: Link Existing Task to this project */}
-        <div className="p-4 rounded-3xl bg-slate-900 border border-slate-800 shadow-sm relative flex flex-col justify-between" ref={linkDropdownRef}>
-          <div>
-            <span className="text-xs font-bold text-white block mb-1 flex items-center gap-1.5">
-              <Link2 className="w-3.5 h-3.5 text-sky-400" />
-              <span>Link Existing Task</span>
+            <span className="text-[11px] text-slate-400 hidden sm:inline">
+              Type to search & link existing tasks, or press Enter to create a new task
             </span>
-            <p className="text-[11px] text-slate-400 mb-3">
-              Select an existing unlinked task to attach to this project.
-            </p>
           </div>
 
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setIsLinkDropdownOpen(prev => !prev)}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-left text-slate-300 hover:border-slate-700 transition"
-            >
-              <span className="truncate">
-                {availableTasksToLink.length > 0
-                  ? 'Select an existing task to link...'
-                  : 'No unlinked tasks available'}
-              </span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
-            </button>
-
-            {isLinkDropdownOpen && availableTasksToLink.length > 0 && (
-              <div className="absolute left-0 right-0 bottom-full mb-1 max-h-56 overflow-y-auto rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl py-1 z-30 animate-fade-in">
-                {availableTasksToLink.map(task => (
+          <form onSubmit={handleUnifiedSubmit} className="relative">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  ref={unifiedInputRef}
+                  type="text"
+                  value={taskQuery}
+                  onChange={(e) => {
+                    setTaskQuery(e.target.value);
+                    setIsSuggestionsOpen(true);
+                    setHighlightedIndex(-1);
+                  }}
+                  onFocus={() => setIsSuggestionsOpen(true)}
+                  onKeyDown={handleInputKeyDown}
+                  placeholder="Search existing task to link, or type new task name..."
+                  className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                />
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                {taskQuery && (
                   <button
-                    key={task.id}
                     type="button"
-                    onClick={() => handleLinkTask(task.id)}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-800/80 transition flex items-center justify-between text-xs text-slate-200"
+                    onClick={() => {
+                      setTaskQuery('');
+                      setHighlightedIndex(-1);
+                      unifiedInputRef.current?.focus();
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                   >
-                    <span className="truncate flex-1 min-w-0 mr-2">{task.title}</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded font-medium shrink-0 bg-slate-950 text-slate-400 border border-slate-800">
-                      {task.status}
-                    </span>
+                    <X className="w-3.5 h-3.5" />
                   </button>
-                ))}
+                )}
+              </div>
+
+              <button
+                type="submit"
+                disabled={!taskQuery.trim()}
+                className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold shadow transition active:scale-95 shrink-0 flex items-center gap-1.5"
+              >
+                {exactMatchingTask ? (
+                  <>
+                    <Link2 className="w-3.5 h-3.5" />
+                    <span>Link Task</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Task</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Live Search Suggestions & Fallback to New Task */}
+            {isSuggestionsOpen && (
+              <div className="absolute left-0 right-0 top-full mt-2 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl max-h-72 overflow-y-auto z-40 p-1.5 animate-fade-in divide-y divide-slate-800/60">
+                
+                {/* Section A: Matching Existing Tasks to Link */}
+                {matchingTasks.length > 0 && (
+                  <div className="py-1">
+                    <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Link2 className="w-3 h-3 text-sky-400" />
+                        <span>Link Existing Task ({matchingTasks.length})</span>
+                      </span>
+                      <span>Click to link</span>
+                    </div>
+
+                    <div className="space-y-0.5 mt-1">
+                      {matchingTasks.slice(0, 8).map((task, idx) => {
+                        const isHighlighted = highlightedIndex === idx;
+                        return (
+                          <button
+                            key={task.id}
+                            type="button"
+                            onClick={() => handleSelectLinkTask(task.id)}
+                            onMouseEnter={() => setHighlightedIndex(idx)}
+                            className={`w-full text-left px-3 py-2 rounded-xl transition flex items-center justify-between text-xs group ${
+                              isHighlighted ? 'bg-indigo-600 text-white shadow-sm' : 'hover:bg-slate-800/80 text-slate-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 truncate mr-2 min-w-0">
+                              <Link2 className={`w-3.5 h-3.5 shrink-0 ${isHighlighted ? 'text-white' : 'text-slate-400 group-hover:text-sky-400'}`} />
+                              <span className="truncate">{task.title}</span>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                                isHighlighted ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-950 text-slate-400 border border-slate-800'
+                              }`}>
+                                {task.status}
+                              </span>
+                              <span className={`text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition ${
+                                isHighlighted ? 'opacity-100 text-indigo-100' : 'text-sky-400'
+                              }`}>
+                                Link ↵
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Section B: Create as New Task Option */}
+                {taskQuery.trim() && (
+                  <div className="py-1">
+                    <button
+                      type="button"
+                      onClick={() => handleCreateNewTask(taskQuery.trim())}
+                      onMouseEnter={() => setHighlightedIndex(matchingTasks.length)}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl transition flex items-center justify-between text-xs group ${
+                        highlightedIndex === matchingTasks.length
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : matchingTasks.length === 0
+                          ? 'bg-slate-950/80 text-slate-100 border border-indigo-500/30'
+                          : 'hover:bg-slate-800/80 text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate min-w-0 mr-2">
+                        <Plus className={`w-4 h-4 shrink-0 ${
+                          highlightedIndex === matchingTasks.length ? 'text-white' : 'text-indigo-400'
+                        }`} />
+                        <span className="truncate">
+                          Create new task: <strong className="text-white font-semibold">"{taskQuery.trim()}"</strong>
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {matchingTasks.length === 0 && (
+                          <span className="text-[10px] text-slate-400 hidden sm:inline">
+                            No match found
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${
+                          highlightedIndex === matchingTasks.length
+                            ? 'bg-indigo-700 text-white'
+                            : 'bg-indigo-600 text-white shadow-sm'
+                        }`}>
+                          Press Enter ↵
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                )}
+
+                {/* Empty State when query is empty and no available tasks to link */}
+                {!taskQuery.trim() && availableTasksToLink.length === 0 && (
+                  <div className="py-3 px-4 text-center text-xs text-slate-400">
+                    No unlinked tasks available. Type any task name and press Enter to create a new task.
+                  </div>
+                )}
+
               </div>
             )}
-          </div>
+          </form>
         </div>
-
       </div>
 
     </div>

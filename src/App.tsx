@@ -10,10 +10,21 @@ import { BacklogBankruptcyModal } from './components/BacklogBankruptcyModal';
 const MainLayout: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<'focus' | 'tasks' | 'projects'>('focus');
   const [tasksNavKey, setTasksNavKey] = useState<number>(0);
+  const [projectsNavKey, setProjectsNavKey] = useState<number>(0);
   
+  const handleTabChange = (tab: 'focus' | 'tasks' | 'projects') => {
+    setCurrentTab(tab);
+    if (tab === 'tasks') {
+      setTasksNavKey(prev => prev + 1);
+    }
+    if (tab === 'projects') {
+      setProjectsNavKey(prev => prev + 1);
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  };
+
   const handleOpenTasksTab = () => {
-    setCurrentTab('tasks');
-    setTasksNavKey(prev => prev + 1);
+    handleTabChange('tasks');
   };
 
   // Modals state
@@ -31,7 +42,7 @@ const MainLayout: React.FC = () => {
         setIsQuickCaptureOpen(true);
       } else if (e.key === 'p' || e.key === 'P') {
         e.preventDefault();
-        setCurrentTab('projects');
+        handleTabChange('projects');
       }
     };
 
@@ -44,12 +55,7 @@ const MainLayout: React.FC = () => {
       {/* Minimal Top Navigation */}
       <Navbar
         currentTab={currentTab}
-        setCurrentTab={(tab) => {
-          setCurrentTab(tab);
-          if (tab === 'tasks') {
-            setTasksNavKey(prev => prev + 1);
-          }
-        }}
+        setCurrentTab={handleTabChange}
         onOpenQuickCapture={() => setIsQuickCaptureOpen(true)}
         onOpenBankruptcy={() => setIsBankruptcyOpen(true)}
       />
@@ -63,12 +69,13 @@ const MainLayout: React.FC = () => {
           <TasksView 
             isVisible={currentTab === 'tasks'}
             tasksNavKey={tasksNavKey}
-            onSelectTaskForFocus={() => setCurrentTab('focus')} 
+            onSelectTaskForFocus={() => handleTabChange('focus')} 
           />
         </div>
         <div className={currentTab === 'projects' ? 'block' : 'hidden'}>
           <ProjectsView 
-            onSelectTaskForFocus={() => setCurrentTab('focus')} 
+            projectsNavKey={projectsNavKey}
+            onSelectTaskForFocus={() => handleTabChange('focus')} 
           />
         </div>
       </main>

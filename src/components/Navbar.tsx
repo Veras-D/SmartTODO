@@ -65,7 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-30 px-6 py-3">
+    <header className="border-b border-slate-900 bg-slate-950/95 backdrop-blur-md sticky top-0 z-30 px-6 py-3">
       <div className="max-w-4xl mx-auto flex items-center justify-between">
         
         {/* Minimal Brand */}

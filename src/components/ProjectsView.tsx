@@ -26,6 +26,8 @@ import { Project, Task } from '../types/task';
 interface ProjectsViewProps {
   onSelectTaskForFocus?: () => void;
   projectsNavKey?: number;
+  onOpenCreateProject?: () => void;
+  directOpenProjectId?: string | null;
 }
 
 interface ConfirmDialogState {
@@ -36,7 +38,12 @@ interface ConfirmDialogState {
   confirmLabel: string;
 }
 
-export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus, projectsNavKey }) => {
+export const ProjectsView: React.FC<ProjectsViewProps> = ({ 
+  onSelectTaskForFocus, 
+  projectsNavKey,
+  onOpenCreateProject,
+  directOpenProjectId
+}) => {
   const {
     projects,
     tasks,
@@ -83,6 +90,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
       setIsEditing(false);
     }
   }, [projectsNavKey]);
+
+  // Open project directly if requested (e.g. newly created via shortcut P)
+  useEffect(() => {
+    if (directOpenProjectId) {
+      setSelectedProjectId(directOpenProjectId);
+    }
+  }, [directOpenProjectId]);
 
   // Ensure selected project still exists
   useEffect(() => {
@@ -382,9 +396,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-extrabold text-white tracking-tight">Projects</h1>
-                <kbd className="text-[10px] bg-slate-900 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800 font-mono">
-                  P
-                </kbd>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 Click a project to open its dedicated task sequence and roadmap
@@ -394,11 +405,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
 
           {!isCreatingNew && (
             <button
-              onClick={startCreatingNew}
+              onClick={onOpenCreateProject || startCreatingNew}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 transition active:scale-95"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New Project</span>
+              <kbd className="text-[10px] bg-indigo-700/80 text-indigo-100 px-1.5 py-0.2 rounded font-mono ml-0.5">
+                P
+              </kbd>
             </button>
           )}
         </div>
@@ -477,11 +491,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onSelectTaskForFocus
               Projects help bundle and order tasks into clear outcomes. Create your first project to get started.
             </p>
             <button
-              onClick={startCreatingNew}
+              onClick={onOpenCreateProject || startCreatingNew}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 transition active:scale-95"
             >
               <Plus className="w-4 h-4" />
               <span>Create First Project</span>
+              <kbd className="text-[10px] bg-indigo-700/80 text-indigo-100 px-1.5 py-0.2 rounded font-mono ml-0.5">
+                P
+              </kbd>
             </button>
           </div>
         ) : (

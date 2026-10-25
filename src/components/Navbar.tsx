@@ -17,6 +17,7 @@ interface NavbarProps {
   currentTab: 'focus' | 'tasks' | 'projects';
   setCurrentTab: (tab: 'focus' | 'tasks' | 'projects') => void;
   onOpenQuickCapture: () => void;
+  onOpenCreateProject?: () => void;
   onOpenBankruptcy: () => void;
 }
 
@@ -24,6 +25,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentTab,
   setCurrentTab,
   onOpenQuickCapture,
+  onOpenCreateProject,
   onOpenBankruptcy
 }) => {
   const { 
@@ -168,13 +170,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl py-1.5 text-xs z-50 animate-fade-in">
                 <button
                   onClick={() => {
-                    setCurrentTab('projects');
+                    if (onOpenCreateProject) {
+                      onOpenCreateProject();
+                    } else {
+                      setCurrentTab('projects');
+                    }
                     setIsMenuOpen(false);
                   }}
                   className="w-full flex items-center gap-2.5 px-3.5 py-2 text-slate-300 hover:bg-slate-800 transition text-left"
                 >
                   <FolderKanban className="w-4 h-4 text-indigo-400" />
-                  <span>Projects (P)</span>
+                  <span>New Project (P)</span>
                 </button>
 
                 <button

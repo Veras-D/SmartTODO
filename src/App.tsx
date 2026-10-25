@@ -5,12 +5,14 @@ import { FocusHUD } from './components/FocusHUD';
 import { TasksView } from './components/TasksView';
 import { ProjectsView } from './components/ProjectsView';
 import { QuickCaptureModal } from './components/QuickCaptureModal';
+import { CreateProjectModal } from './components/CreateProjectModal';
 import { BacklogBankruptcyModal } from './components/BacklogBankruptcyModal';
 
 const MainLayout: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<'focus' | 'tasks' | 'projects'>('focus');
   const [tasksNavKey, setTasksNavKey] = useState<number>(0);
   const [projectsNavKey, setProjectsNavKey] = useState<number>(0);
+  const [directOpenProjectId, setDirectOpenProjectId] = useState<string | null>(null);
   
   const handleTabChange = (tab: 'focus' | 'tasks' | 'projects') => {
     setCurrentTab(tab);
@@ -29,9 +31,10 @@ const MainLayout: React.FC = () => {
 
   // Modals state
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isBankruptcyOpen, setIsBankruptcyOpen] = useState(false);
 
-  // Global hotkeys: 'N' for quick capture, 'P' for projects tab
+  // Global hotkeys: 'N' for quick task capture, 'P' to create new project
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
@@ -42,7 +45,7 @@ const MainLayout: React.FC = () => {
         setIsQuickCaptureOpen(true);
       } else if (e.key === 'p' || e.key === 'P') {
         e.preventDefault();
-        handleTabChange('projects');
+        setIsCreateProjectOpen(true);
       }
     };
 
@@ -57,6 +60,7 @@ const MainLayout: React.FC = () => {
         currentTab={currentTab}
         setCurrentTab={handleTabChange}
         onOpenQuickCapture={() => setIsQuickCaptureOpen(true)}
+        onOpenCreateProject={() => setIsCreateProjectOpen(true)}
         onOpenBankruptcy={() => setIsBankruptcyOpen(true)}
       />
 
@@ -76,14 +80,25 @@ const MainLayout: React.FC = () => {
           <ProjectsView 
             projectsNavKey={projectsNavKey}
             onSelectTaskForFocus={() => handleTabChange('focus')} 
+            onOpenCreateProject={() => setIsCreateProjectOpen(true)}
+            directOpenProjectId={directOpenProjectId}
           />
         </div>
       </main>
 
-      {/* Clean Modals for Quick Capture & Reset */}
+      {/* Clean Modals for Quick Capture, Create Project & Reset */}
       <QuickCaptureModal
         isOpen={isQuickCaptureOpen}
         onClose={() => setIsQuickCaptureOpen(false)}
+      />
+
+      <CreateProjectModal
+        isOpen={isCreateProjectOpen}
+        onClose={() => setIsCreateProjectOpen(false)}
+        onProjectCreated={(newProject) => {
+          handleTabChange('projects');
+          setDirectOpenProjectId(newProject.id);
+        }}
       />
 
       <BacklogBankruptcyModal

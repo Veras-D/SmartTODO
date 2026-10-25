@@ -784,18 +784,18 @@ export const TasksView: React.FC<TasksViewProps> = ({
                             <FolderKanban className="w-3.5 h-3.5 text-indigo-400" />
                             <span>Assigned Project</span>
                           </label>
-                          <select
+                          <CustomSelect
                             value={gtdProjectId}
-                            onChange={(e) => setGtdProjectId(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700/80 text-xs text-white focus:outline-none focus:border-indigo-500"
-                          >
-                            <option value="">No Project (Standalone task)</option>
-                            {projects.map(p => (
-                              <option key={p.id} value={p.id}>
-                                📁 {p.title}
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(val) => setGtdProjectId(val)}
+                            options={[
+                              { value: '', label: 'No Project (Standalone task)' },
+                              ...projects.map(p => ({
+                                value: p.id,
+                                label: p.title,
+                                icon: <FolderKanban className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                              }))
+                            ]}
+                          />
                         </div>
                       )}
                     </div>

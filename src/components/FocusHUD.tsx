@@ -60,6 +60,28 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
   const [blockerInput, setBlockerInput] = useState('');
   const [isAddingBlocker, setIsAddingBlocker] = useState(false);
   const [inlineTaskTitle, setInlineTaskTitle] = useState('');
+  const [taskNotes, setTaskNotes] = useState(activeTask?.notes || '');
+
+  // Keep local notes state synced when active task changes
+  useEffect(() => {
+    setTaskNotes(activeTask?.notes || '');
+  }, [activeTask?.id]);
+
+  // Debounced auto-save notes to the task
+  useEffect(() => {
+    if (!activeTask) return;
+    if (taskNotes === (activeTask.notes || '')) return;
+
+    const timer = setTimeout(() => {
+      createOrUpdateTask({
+        id: activeTask.id,
+        title: activeTask.title,
+        notes: taskNotes
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [taskNotes, activeTask?.id, activeTask?.title, activeTask?.notes, createOrUpdateTask]);
 
   // Keyboard shortcuts: Space to roll, Enter to complete
   useEffect(() => {
@@ -423,6 +445,33 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
               {activeTask.title}
             </h1>
 
+            {/* Quick Note Textarea (Attached to active task, auto-saved) */}
+            <div className="mb-4">
+              <div className="relative">
+                <textarea
+                  value={taskNotes}
+                  onChange={(e) => setTaskNotes(e.target.value)}
+                  onBlur={() => {
+                    if (activeTask && taskNotes !== (activeTask.notes || '')) {
+                      createOrUpdateTask({
+                        id: activeTask.id,
+                        title: activeTask.title,
+                        notes: taskNotes
+                      });
+                    }
+                  }}
+                  placeholder="Quick note / thoughts for this task..."
+                  rows={2}
+                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-950/60 border border-slate-800 focus:border-indigo-500/70 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition resize-none shadow-inner leading-relaxed"
+                />
+                {taskNotes && (
+                  <span className="absolute right-3 bottom-2 text-[10px] text-slate-600 font-medium pointer-events-none">
+                    Auto-saved
+                  </span>
+                )}
+              </div>
+            </div>
+
             {/* Definition of Done (DoD) */}
             {activeTask.definitionOfDone && (
               <p className="text-xs text-indigo-300/90 mb-4 flex items-center gap-1.5 bg-indigo-950/30 p-2.5 rounded-xl border border-indigo-900/40">
@@ -462,13 +511,6 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                   </button>
                 ))}
               </div>
-            )}
-
-            {/* Notes (if any) */}
-            {activeTask.notes && (
-              <p className="text-xs text-slate-400 italic mb-4">
-                Note: {activeTask.notes}
-              </p>
             )}
 
             {/* Action Buttons: Done, Continue Later, Can't do it now */}

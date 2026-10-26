@@ -445,6 +445,25 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
               {activeTask.title}
             </h1>
 
+            {/* Definition of Done (DoD) */}
+            {activeTask.definitionOfDone && (
+              <p className="text-xs text-indigo-300/90 mb-4 flex items-center gap-1.5 bg-indigo-950/30 p-2.5 rounded-xl border border-indigo-900/40">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span><b>Done when:</b> {activeTask.definitionOfDone}</span>
+              </p>
+            )}
+
+            {/* Friction Buster Starter (if active) */}
+            {activeTask.frictionBusterStep && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex items-start gap-2 text-xs text-emerald-200">
+                <Scissors className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span><b>Just do 2 minutes:</b> {activeTask.frictionBusterStep}</span>
+              </div>
+            )}
+
+            {/* Pomodoro Focus Timer */}
+            <PomodoroTimer />
+
             {/* Quick Note Textarea (Attached to active task, auto-saved) */}
             <div className="mb-4">
               <div className="relative">
@@ -471,25 +490,6 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                 )}
               </div>
             </div>
-
-            {/* Definition of Done (DoD) */}
-            {activeTask.definitionOfDone && (
-              <p className="text-xs text-indigo-300/90 mb-4 flex items-center gap-1.5 bg-indigo-950/30 p-2.5 rounded-xl border border-indigo-900/40">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span><b>Done when:</b> {activeTask.definitionOfDone}</span>
-              </p>
-            )}
-
-            {/* Friction Buster Starter (if active) */}
-            {activeTask.frictionBusterStep && (
-              <div className="mb-4 p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex items-start gap-2 text-xs text-emerald-200">
-                <Scissors className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span><b>Just do 2 minutes:</b> {activeTask.frictionBusterStep}</span>
-              </div>
-            )}
-
-            {/* Pomodoro Focus Timer */}
-            <PomodoroTimer />
 
             {/* Micro-Steps (if present) */}
             {activeTask.microSteps && activeTask.microSteps.length > 0 && (

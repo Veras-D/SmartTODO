@@ -72,8 +72,15 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
   useEffect(() => {
     const el = noteTextareaRef.current;
     if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${Math.max(el.scrollHeight, 56)}px`;
+    const resize = () => {
+      el.style.height = 'auto';
+      // Account for borders and subpixel wrapping so content fits fully without scrolling
+      const borderBuffer = 6;
+      el.style.height = `${Math.max(el.scrollHeight + borderBuffer, 56)}px`;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
   }, [taskNotes, activeTask?.id]);
 
   // Debounced auto-save notes to the task
@@ -490,8 +497,7 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                     }
                   }}
                   placeholder="Quick note / thoughts for this task..."
-                  rows={2}
-                  className="w-full px-3.5 pt-2.5 pb-6 rounded-2xl bg-slate-950/60 border border-slate-800 focus:border-indigo-500/70 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-colors resize-none shadow-inner leading-relaxed min-h-[56px] max-h-64 overflow-y-auto"
+                  className="w-full px-3.5 pt-2.5 pb-6 rounded-2xl bg-slate-950/60 border border-slate-800 focus:border-indigo-500/70 text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition-colors resize-none shadow-inner leading-relaxed min-h-[56px] overflow-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 />
                 {taskNotes && (
                   <span className="absolute right-3 bottom-2 text-[10px] text-slate-600 font-medium pointer-events-none">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   FolderKanban, 
   Plus, 
@@ -342,7 +343,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   // Render Custom Confirmation Modal
   const renderConfirmModal = () => {
     if (!confirmDialog) return null;
-    return (
+    return createPortal(
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
         <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative">
           <div className="flex items-start gap-3 mb-4">
@@ -376,7 +377,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
             </button>
           </div>
         </div>
-      </div>
+      </div>,
+      document.body
     );
   };
 

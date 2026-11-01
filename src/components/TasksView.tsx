@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   Play, 
   Trash2, 
@@ -69,23 +69,36 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
   const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>('all');
 
+  // Project tasks live inside their project page. The Tasks tab is the general
+  // list, so "All" hides them; picking a project chip shows that project only.
+  const projectIds = useMemo(() => new Set(projects.map(p => p.id)), [projects]);
+  const scopedTasks = useMemo(() => {
+    if (selectedProjectFilter === 'all') {
+      return tasks.filter(t => !t.projectId || !projectIds.has(t.projectId));
+    }
+    return tasks.filter(t => t.projectId === selectedProjectFilter);
+  }, [tasks, projectIds, selectedProjectFilter]);
+
+  // A filter pointing at a deleted project would strand the list on "no tasks"
+  useEffect(() => {
+    if (selectedProjectFilter !== 'all' && !projectIds.has(selectedProjectFilter)) {
+      setSelectedProjectFilter('all');
+    }
+  }, [projectIds, selectedProjectFilter]);
+
   // Determine default tab by priority:
   // 1. Inbox (if any tasks in inbox)
   // 2. In Progress (if any tasks in in_progress)
   // 3. Ready (otherwise)
   const getDefaultSubTab = useCallback((): 'inbox' | 'in_progress' | 'ready' => {
-    if (tasks.some(t => t.status === 'inbox')) return 'inbox';
-    if (tasks.some(t => t.status === 'in_progress')) return 'in_progress';
+    if (scopedTasks.some(t => t.status === 'inbox')) return 'inbox';
+    if (scopedTasks.some(t => t.status === 'in_progress')) return 'in_progress';
     return 'ready';
-  }, [tasks]);
+  }, [scopedTasks]);
 
   const [isRefining, setIsRefining] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [activeTab, setActiveTab] = useState<'inbox' | 'in_progress' | 'ready' | 'blocked' | 'done' | 'all'>(() => {
-    if (tasks.some(t => t.status === 'inbox')) return 'inbox';
-    if (tasks.some(t => t.status === 'in_progress')) return 'in_progress';
-    return 'ready';
-  });
+  const [activeTab, setActiveTab] = useState<'inbox' | 'in_progress' | 'ready' | 'blocked' | 'done' | 'all'>(getDefaultSubTab);
   const [clarifyingTaskId, setClarifyingTaskId] = useState<string | null>(null);
 
   // When switching to the Tasks tab, prioritize: inbox -> in_progress -> ready
@@ -229,13 +242,13 @@ export const TasksView: React.FC<TasksViewProps> = ({
     });
   };
 
-  const inboxCount = tasks.filter(t => t.status === 'inbox').length;
-  const inProgressCount = tasks.filter(t => t.status === 'in_progress').length;
-  const readyCount = tasks.filter(t => t.status === 'ready').length;
-  const blockedCount = tasks.filter(t => t.status === 'blocked').length;
-  const doneCount = tasks.filter(t => t.status === 'completed').length;
+  const inboxCount = scopedTasks.filter(t => t.status === 'inbox').length;
+  const inProgressCount = scopedTasks.filter(t => t.status === 'in_progress').length;
+  const readyCount = scopedTasks.filter(t => t.status === 'ready').length;
+  const blockedCount = scopedTasks.filter(t => t.status === 'blocked').length;
+  const doneCount = scopedTasks.filter(t => t.status === 'completed').length;
 
-  const filteredTasks = tasks.filter(t => {
+  const filteredTasks = scopedTasks.filter(t => {
     if (selectedProjectFilter !== 'all' && t.projectId !== selectedProjectFilter) return false;
     if (activeTab === 'inbox') return t.status === 'inbox';
     if (activeTab === 'in_progress') return t.status === 'in_progress';
@@ -372,7 +385,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
         >
           <span>All</span>
           <span className="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.2 rounded-full">
-            {tasks.length}
+            {scopedTasks.length}
           </span>
         </button>
       </div>
@@ -435,7 +448,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
       <div className="space-y-3">
         {filteredTasks.length === 0 ? (
           <div className="p-10 text-center text-slate-500 text-xs bg-slate-900/40 rounded-3xl border border-slate-900">
-            {activeTab === 'inbox' ? 'Your inbox is clear! Capture raw ideas above.' : 'No tasks in this list.'}
+            {activeTab === 'inbox'
+              ? 'Your inbox is clear! Capture raw ideas above.'
+              : selectedProjectFilter === 'all' && tasks.length > scopedTasks.length
+                ? 'No general tasks here — project tasks live inside their project page.'
+                : 'No tasks in this list.'}
           </div>
         ) : (
           filteredTasks.map(task => {

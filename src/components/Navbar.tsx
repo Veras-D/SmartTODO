@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   Dices, 
   ListTodo, 
@@ -42,6 +42,13 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // The Tasks tab lists general tasks only, so its badge must not count the
+  // ones that live inside a project.
+  const generalReadyCount = useMemo(() => {
+    const projectIds = new Set(projects.map(p => p.id));
+    return unblockedReadyTasks.filter(t => !t.projectId || !projectIds.has(t.projectId)).length;
+  }, [unblockedReadyTasks, projects]);
 
   // Close menu on click outside
   useEffect(() => {
@@ -124,7 +131,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ListTodo className="w-3.5 h-3.5" />
             <span>Tasks</span>
             <span className="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] text-slate-300">
-              {unblockedReadyTasks.length}
+              {generalReadyCount}
             </span>
           </button>
 

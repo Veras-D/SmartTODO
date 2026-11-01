@@ -40,6 +40,13 @@ interface TaskContextType {
   deleteTask: (id: string) => void;
   restoreFromColdStorage: (id: string) => void;
   declareBankruptcy: () => number;
+
+  // Undo / Redo (Ctrl+Z / Ctrl+Shift+Z) for destructive actions
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  lastAction: { id: number; label: string } | null;
   
   // Projects
   projects: Project[];
@@ -74,6 +81,15 @@ interface TaskContextType {
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
+/** Snapshot of the app data taken right before an undoable action. */
+interface HistoryEntry {
+  tasks: Task[];
+  projects: Project[];
+  label: string;
+}
+
+const MAX_HISTORY_ENTRIES = 30;
+
 export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tasks, setTasks] = useState<Task[]>(() => loadStoredTasks());
   const [projects, setProjects] = useState<Project[]>(() => loadStoredProjects());
@@ -81,6 +97,54 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [filter, setFilter] = useState<RouletteFilter>('all');
   const [isRolling, setIsRolling] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => loadSoundSetting());
+
+  // ---------------------------------------------------------------------------
+  // Undo / Redo history
+  // Every destructive action stores a snapshot of the whole data set, so a single
+  // Ctrl+Z puts back exactly what was there before (including task links,
+  // dependencies and project membership).
+  // ---------------------------------------------------------------------------
+  const [undoStack, setUndoStack] = useState<HistoryEntry[]>([]);
+  const [redoStack, setRedoStack] = useState<HistoryEntry[]>([]);
+  const [lastAction, setLastAction] = useState<{ id: number; label: string } | null>(null);
+  const actionCounterRef = useRef(0);
+
+  const pushHistory = useCallback((label: string) => {
+    setUndoStack(prev => [
+      ...prev.slice(-(MAX_HISTORY_ENTRIES - 1)),
+      { tasks, projects, label }
+    ]);
+    // Any new action invalidates the redo branch
+    setRedoStack([]);
+    actionCounterRef.current += 1;
+    setLastAction({ id: actionCounterRef.current, label });
+  }, [tasks, projects]);
+
+  const undo = useCallback(() => {
+    if (undoStack.length === 0) return;
+    const entry = undoStack[undoStack.length - 1];
+    setRedoStack(prev => [...prev, { tasks, projects, label: entry.label }]);
+    setTasks(entry.tasks);
+    setProjects(entry.projects);
+    setActiveTaskId(prev => (prev && !entry.tasks.some(t => t.id === prev) ? null : prev));
+    setUndoStack(prev => prev.slice(0, -1));
+    setLastAction(null);
+  }, [undoStack, tasks, projects]);
+
+  const redo = useCallback(() => {
+    if (redoStack.length === 0) return;
+    const entry = redoStack[redoStack.length - 1];
+    setUndoStack(prev => [
+      ...prev.slice(-(MAX_HISTORY_ENTRIES - 1)),
+      { tasks, projects, label: entry.label }
+    ]);
+    setTasks(entry.tasks);
+    setProjects(entry.projects);
+    setActiveTaskId(prev => (prev && !entry.tasks.some(t => t.id === prev) ? null : prev));
+    setRedoStack(prev => prev.slice(0, -1));
+    actionCounterRef.current += 1;
+    setLastAction({ id: actionCounterRef.current, label: `Redid: ${entry.label}` });
+  }, [redoStack, tasks, projects]);
 
   // Sync projects to local storage
   useEffect(() => {
@@ -473,6 +537,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const completeActiveTask = useCallback(() => {
     if (!activeTask) return;
 
+    pushHistory(`Completed "${activeTask.title}"`);
+
     soundManager.playCompletionCelebration();
     confetti({
       particleCount: 80,
@@ -512,7 +578,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveTaskId(null);
     setTimerIsRunning(false);
     timerEndTimeRef.current = null;
-  }, [activeTask]);
+  }, [activeTask, pushHistory]);
 
   // Handle "Can't do it now" adaptive response
   const handleCantDo = useCallback((reason: 'too_tired' | 'blocked' | 'not_now' | 'cold_storage', blockerText?: string) => {
@@ -682,6 +748,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Delete Task
   const deleteTask = useCallback((id: string) => {
+    const target = tasks.find(t => t.id === id);
+    pushHistory(target ? `Deleted "${target.title}"` : 'Task deleted');
+
     setTasks(prev => {
       const remaining = prev.filter(t => t.id !== id);
       return unblockDependentTasks(id, remaining);
@@ -693,7 +762,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (activeTaskId === id) {
       setActiveTaskId(null);
     }
-  }, [activeTaskId]);
+  }, [activeTaskId, pushHistory, tasks]);
 
   // Project Actions
   const createProject = useCallback((data: { title: string; description?: string; color?: string; taskIds?: string[] }): Project => {
@@ -725,9 +794,12 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const deleteProject = useCallback((id: string) => {
+    const target = projects.find(p => p.id === id);
+    pushHistory(target ? `Deleted project "${target.title}"` : 'Project deleted');
+
     setProjects(prev => prev.filter(p => p.id !== id));
     setTasks(prev => prev.map(t => t.projectId === id ? { ...t, projectId: undefined } : t));
-  }, []);
+  }, [projects, pushHistory]);
 
   const reorderProjectTasks = useCallback((projectId: string, newTaskIds: string[]) => {
     setProjects(prev => prev.map(p => p.id === projectId ? { ...p, taskIds: newTaskIds } : p));
@@ -745,6 +817,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const removeTaskFromProject = useCallback((projectId: string, taskId: string) => {
+    const target = tasks.find(t => t.id === taskId);
+    pushHistory(target ? `Unlinked "${target.title}"` : 'Task unlinked');
+
     setProjects(prev => prev.map(p => {
       if (p.id === projectId) {
         return { ...p, taskIds: p.taskIds.filter(id => id !== taskId) };
@@ -752,7 +827,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return p;
     }));
     setTasks(prev => prev.map(t => (t.id === taskId && t.projectId === projectId) ? { ...t, projectId: undefined } : t));
-  }, []);
+  }, [pushHistory, tasks]);
 
   const createAndAddTaskToProject = useCallback((projectId: string, title: string): Task => {
     const newTask: Task = {
@@ -795,31 +870,34 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Backlog Bankruptcy: archive tasks uncompleted > 14 days or skipped 4+ times
   const declareBankruptcy = useCallback((): number => {
     const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-    let count = 0;
 
+    const idsToArchive = tasks
+      .filter(t => t.status !== 'completed' && t.status !== 'cold_storage')
+      .filter(t => t.createdAt < fourteenDaysAgo || t.skipCount >= 4)
+      .map(t => t.id);
+
+    if (idsToArchive.length === 0) return 0;
+
+    pushHistory(`Archived ${idsToArchive.length} task${idsToArchive.length === 1 ? '' : 's'}`);
+
+    const idSet = new Set(idsToArchive);
     setTasks(prev => prev.map(t => {
-      if (t.status !== 'completed' && t.status !== 'cold_storage') {
-        const isOld = t.createdAt < fourteenDaysAgo;
-        const isRepeatedlySkipped = t.skipCount >= 4;
-
-        if (isOld || isRepeatedlySkipped) {
-          count++;
-          return {
-            ...t,
-            status: 'cold_storage' as TaskStatus,
-            archivedAt: new Date().toISOString()
-          };
-        }
+      if (idSet.has(t.id)) {
+        return {
+          ...t,
+          status: 'cold_storage' as TaskStatus,
+          archivedAt: new Date().toISOString()
+        };
       }
       return t;
     }));
 
-    if (activeTask && (activeTask.createdAt < fourteenDaysAgo || activeTask.skipCount >= 4)) {
+    if (activeTask && idSet.has(activeTask.id)) {
       setActiveTaskId(null);
     }
 
-    return count;
-  }, [activeTask]);
+    return idsToArchive.length;
+  }, [activeTask, pushHistory, tasks]);
 
   return (
     <TaskContext.Provider
@@ -846,6 +924,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteTask,
         restoreFromColdStorage,
         declareBankruptcy,
+        undo,
+        redo,
+        canUndo: undoStack.length > 0,
+        canRedo: redoStack.length > 0,
+        lastAction,
         projects,
         createProject,
         updateProject,

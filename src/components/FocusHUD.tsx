@@ -15,10 +15,13 @@ import {
   Clock,
   Link,
   ArrowRight,
-  FolderKanban
+  FolderKanban,
+  Copy,
+  Check
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { useTextHistory } from '../hooks/useTextHistory';
+import { copyTextToClipboard } from '../utils/clipboard';
 import { PomodoroTimer } from './PomodoroTimer';
 
 interface FocusHUDProps {
@@ -74,6 +77,20 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
   const [inlineTaskTitle, setInlineTaskTitle] = useState('');
   const [taskNotes, setTaskNotes] = useState(activeTask?.notes || '');
   const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [titleCopied, setTitleCopied] = useState(false);
+  const titleCopiedTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (titleCopiedTimer.current !== null) window.clearTimeout(titleCopiedTimer.current);
+  }, []);
+
+  const handleCopyTitle = async () => {
+    if (!activeTask) return;
+    if (!(await copyTextToClipboard(activeTask.title))) return;
+    setTitleCopied(true);
+    if (titleCopiedTimer.current !== null) window.clearTimeout(titleCopiedTimer.current);
+    titleCopiedTimer.current = window.setTimeout(() => setTitleCopied(false), 1500);
+  };
 
   // Undo/redo for the notes field (React controlled inputs break native undo)
   const {
@@ -492,9 +509,23 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
             </div>
 
             {/* Big readable Task Title */}
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-snug mb-3">
-              {activeTask.title}
-            </h1>
+            <div className="flex items-start gap-2 mb-3">
+              <h1 className="flex-1 min-w-0 text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-snug">
+                {activeTask.title}
+              </h1>
+              <button
+                onClick={handleCopyTitle}
+                className={`mt-1 p-1.5 rounded-lg transition shrink-0 ${
+                  titleCopied
+                    ? 'text-emerald-400 bg-emerald-950/40'
+                    : 'text-slate-500 hover:text-indigo-300 hover:bg-indigo-950/40'
+                }`}
+                title={titleCopied ? 'Title copied' : 'Copy task title'}
+                aria-label={titleCopied ? 'Title copied' : 'Copy task title'}
+              >
+                {titleCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
 
             {/* Definition of Done (DoD) */}
             {activeTask.definitionOfDone && (

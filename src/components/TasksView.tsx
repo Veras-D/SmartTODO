@@ -20,12 +20,15 @@ import {
   Repeat,
   Link,
   RotateCcw,
-  FolderKanban
+  FolderKanban,
+  Copy,
+  Check
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Task, EnergyLevel, TaskImportance, GTDContext, Blocker, RecurrenceInterval } from '../types/task';
 import { generateId } from '../utils/storage';
 import { getEligibleBlockerCandidates } from '../utils/taskDependencies';
+import { copyTextToClipboard } from '../utils/clipboard';
 import { CustomSelect, SelectOption } from './CustomSelect';
 import { InboxRefinery } from './InboxRefinery';
 
@@ -100,6 +103,19 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [activeTab, setActiveTab] = useState<'inbox' | 'in_progress' | 'ready' | 'blocked' | 'done' | 'all'>(getDefaultSubTab);
   const [clarifyingTaskId, setClarifyingTaskId] = useState<string | null>(null);
+  const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
+  const copyTimerRef = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
+  }, []);
+
+  const handleCopyTaskTitle = async (task: Task) => {
+    if (!(await copyTextToClipboard(task.title))) return;
+    setCopiedTaskId(task.id);
+    if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = window.setTimeout(() => setCopiedTaskId(null), 1500);
+  };
 
   // When switching to the Tasks tab, prioritize: inbox -> in_progress -> ready
   const prevIsVisibleRef = useRef<boolean>(false);
@@ -595,6 +611,20 @@ export const TasksView: React.FC<TasksViewProps> = ({
                     >
                       <span>GTD</span>
                       {isClarifying ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </button>
+
+                    {/* Copy full task title */}
+                    <button
+                      onClick={() => handleCopyTaskTitle(task)}
+                      className={`p-1.5 rounded-xl transition ${
+                        copiedTaskId === task.id
+                          ? 'text-emerald-400 bg-emerald-950/30'
+                          : 'text-slate-400 hover:text-indigo-300 hover:bg-indigo-950/30'
+                      }`}
+                      title={copiedTaskId === task.id ? 'Title copied' : 'Copy task title'}
+                      aria-label={copiedTaskId === task.id ? 'Title copied' : 'Copy task title'}
+                    >
+                      {copiedTaskId === task.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                     </button>
 
                     {/* Move back to Inbox button */}

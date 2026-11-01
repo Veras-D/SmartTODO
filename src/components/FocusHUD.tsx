@@ -18,6 +18,7 @@ import {
   FolderKanban
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
+import { useTextHistory } from '../hooks/useTextHistory';
 import { PomodoroTimer } from './PomodoroTimer';
 
 interface FocusHUDProps {
@@ -63,9 +64,19 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
   const [taskNotes, setTaskNotes] = useState(activeTask?.notes || '');
   const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Undo/redo for the notes field (React controlled inputs break native undo)
+  const {
+    handleKeyDown: handleNotesKeyDown,
+    reset: resetNotesHistory
+  } = useTextHistory(taskNotes, setTaskNotes, {
+    inputRef: noteTextareaRef
+  });
+
   // Keep local notes state synced when active task changes
   useEffect(() => {
-    setTaskNotes(activeTask?.notes || '');
+    const notes = activeTask?.notes || '';
+    setTaskNotes(notes);
+    resetNotesHistory(notes);
   }, [activeTask?.id]);
 
   // Auto-resize notes textarea as content expands or shrinks
@@ -487,6 +498,7 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                   ref={noteTextareaRef}
                   value={taskNotes}
                   onChange={(e) => setTaskNotes(e.target.value)}
+                  onKeyDown={handleNotesKeyDown}
                   onBlur={() => {
                     if (activeTask && taskNotes !== (activeTask.notes || '')) {
                       createOrUpdateTask({

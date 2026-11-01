@@ -24,6 +24,7 @@ import {
 import { useTaskContext } from '../context/TaskContext';
 import { Project, Task } from '../types/task';
 import { AutoGrowTextarea } from './AutoGrowTextarea';
+import { useTextHistory } from '../hooks/useTextHistory';
 
 interface ProjectsViewProps {
   onSelectTaskForFocus?: () => void;
@@ -71,6 +72,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
+
+  // Undo/redo inside the description field (controlled inputs break native undo)
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const descriptionHistory = useTextHistory(formDescription, setFormDescription, {
+    inputRef: descriptionRef
+  });
 
   // Drag and drop state for task reordering
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -180,6 +187,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     if (e) e.stopPropagation();
     setFormTitle(project.title);
     setFormDescription(project.description || '');
+    descriptionHistory.reset(project.description || '');
     setIsEditing(true);
     setIsCreatingNew(false);
   };
@@ -187,6 +195,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const startCreatingNew = () => {
     setFormTitle('');
     setFormDescription('');
+    descriptionHistory.reset('');
     setIsCreatingNew(true);
     setIsEditing(false);
   };
@@ -457,8 +466,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 Description
               </label>
               <AutoGrowTextarea
+                ref={descriptionRef}
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
+                onKeyDown={descriptionHistory.handleKeyDown}
                 placeholder="What is this project about? Add context, scope, goals... The field grows as you type."
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm leading-relaxed text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
               />
@@ -667,8 +678,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                 Description
               </label>
               <AutoGrowTextarea
+                ref={descriptionRef}
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
+                onKeyDown={descriptionHistory.handleKeyDown}
                 placeholder="What is this project about? Add context, scope, goals..."
                 className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm leading-relaxed text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
               />

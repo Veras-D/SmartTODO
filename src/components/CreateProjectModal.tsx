@@ -4,6 +4,7 @@ import { X, FolderKanban, Plus, Sparkles } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Project } from '../types/task';
 import { AutoGrowTextarea } from './AutoGrowTextarea';
+import { useTextHistory } from '../hooks/useTextHistory';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -20,6 +21,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const descriptionHistory = useTextHistory(description, setDescription, {
+    inputRef: descriptionRef
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -27,6 +32,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     } else {
       setTitle('');
       setDescription('');
+      descriptionHistory.reset('');
     }
   }, [isOpen]);
 
@@ -101,8 +107,10 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
               Description (Optional)
             </label>
             <AutoGrowTextarea
+              ref={descriptionRef}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              onKeyDown={descriptionHistory.handleKeyDown}
               placeholder="What is this project about? Add context, scope, goals... The field grows as you type."
               className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm leading-relaxed text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
             />

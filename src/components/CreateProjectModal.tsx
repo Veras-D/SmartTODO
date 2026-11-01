@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X, FolderKanban, Plus, Sparkles } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { Project } from '../types/task';
+import { AutoGrowTextarea } from './AutoGrowTextarea';
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -97,14 +98,13 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Definition of Done / Goal (Optional)
+              Description (Optional)
             </label>
-            <textarea
+            <AutoGrowTextarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What does completed look like? Describe the final outcome..."
-              rows={2}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition resize-none"
+              placeholder="What is this project about? Add context, scope, goals... The field grows as you type."
+              className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-sm leading-relaxed text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
             />
           </div>
 

@@ -8,6 +8,7 @@ import { QuickCaptureModal } from './components/QuickCaptureModal';
 import { CreateProjectModal } from './components/CreateProjectModal';
 import { BacklogBankruptcyModal } from './components/BacklogBankruptcyModal';
 import { UndoToast } from './components/UndoToast';
+import { installPlainTextClipboard } from './utils/clipboard';
 
 const MainLayout: React.FC = () => {
   const { undo, redo } = useTaskContext();
@@ -35,6 +36,9 @@ const MainLayout: React.FC = () => {
   const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isBankruptcyOpen, setIsBankruptcyOpen] = useState(false);
+
+  // Copy exactly the highlighted text as plain text (see utils/clipboard.ts)
+  useEffect(() => installPlainTextClipboard(), []);
 
   // Global hotkeys: 'N' for quick task capture, 'P' to create new project,
   // Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) to undo / redo destructive actions

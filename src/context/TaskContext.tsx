@@ -391,7 +391,17 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Roll Random Task with tactile animation and sound
   const rollRandomTask = useCallback(() => {
-    const pool = getEligibleRollPool();
+    let pool = getEligibleRollPool();
+
+    // An active filter can hide every ready task (e.g. "Low energy" while the
+    // only task is medium energy). Never leave the dice silently dead: fall
+    // back to the whole ready pool and drop the filter so the UI tells the
+    // truth about what was rolled.
+    if (pool.length === 0 && unblockedReadyTasks.length > 0) {
+      pool = unblockedReadyTasks;
+      if (filter !== 'all') setFilter('all');
+    }
+
     if (pool.length === 0) {
       setActiveTaskId(null);
       return;
@@ -439,7 +449,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setTimerIsRunning(true);
       }
     }, 90);
-  }, [getEligibleRollPool, activeTaskId]);
+  }, [getEligibleRollPool, unblockedReadyTasks, filter, activeTaskId]);
 
   // Start a specific task directly (from Inbox, Ready deck, or Continue Later)
   const startTaskDirectly = useCallback((taskId: string) => {

@@ -55,6 +55,17 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
     ? tasks.filter(t => t.blockers.some(b => !b.resolved && b.blockedByTaskId === activeTask.id))
     : [];
 
+  // An active filter with no matches used to leave the dice silently dead
+  const filterHidesAllTasks =
+    filter !== 'all' &&
+    unblockedReadyTasks.length > 0 &&
+    !unblockedReadyTasks.some(t => {
+      if (filter === 'low_energy') return t.energyLevel === 'low';
+      if (filter === 'deep_focus') return t.energyLevel === 'high';
+      if (filter === 'quick_win') return t.estimatedMinutes <= 10;
+      return true;
+    });
+
   const inboxTasks = tasks.filter(t => t.status === 'inbox');
 
   const [showSkipOptions, setShowSkipOptions] = useState(false);
@@ -351,6 +362,19 @@ export const FocusHUD: React.FC<FocusHUDProps> = ({ onOpenTasksTab }) => {
                   <span>{filter === 'low_energy' ? 'Low energy active' : 'Low energy?'}</span>
                 </button>
               </div>
+
+              {filterHidesAllTasks && (
+                <p className="mt-3 text-[11px] text-amber-400/90 text-center">
+                  No task matches this filter — the dice will still roll your{' '}
+                  {unblockedReadyTasks.length === 1 ? 'task' : `${unblockedReadyTasks.length} tasks`}.{' '}
+                  <button
+                    onClick={() => setFilter('all')}
+                    className="underline hover:text-amber-300 transition"
+                  >
+                    Show all
+                  </button>
+                </p>
+              )}
 
               {/* 📥 Inbox Shelf - Direct Start in Focus Deck */}
               {unblockedInboxTasks.length > 0 && (

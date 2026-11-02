@@ -19,10 +19,12 @@ import {
   X,
   ListTodo,
   Search,
-  GripVertical
+  GripVertical,
+  Save,
+  XCircle
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
-import { Project, Task } from '../types/task';
+import { Project, Task, GTDContext, EnergyLevel, TaskImportance, RecurrenceInterval } from '../types/task';
 import { AutoGrowTextarea } from './AutoGrowTextarea';
 import { useTextHistory } from '../hooks/useTextHistory';
 
@@ -50,6 +52,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const {
     projects,
     tasks,
+    createOrUpdateTask,
     createProject,
     updateProject,
     deleteProject,
@@ -72,6 +75,71 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
+
+  // Inline editor for a task inside the project (opened by clicking its title)
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editNextAction, setEditNextAction] = useState('');
+  const [editContext, setEditContext] = useState<GTDContext>('@computer');
+  const [editDoD, setEditDoD] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editEnergy, setEditEnergy] = useState<EnergyLevel>('medium');
+  const [editMinutes, setEditMinutes] = useState<number>(25);
+  const [editRecurrence, setEditRecurrence] = useState<RecurrenceInterval>('none');
+  const [editImportance, setEditImportance] = useState<TaskImportance>('medium');
+  const editTitleRef = useRef<HTMLInputElement>(null);
+
+  const openTaskEditor = (task: Task) => {
+    setEditingTaskId(task.id);
+    setEditTitle(task.title);
+    setEditNextAction(task.nextAction || '');
+    setEditContext(task.gtdContext || '@computer');
+    setEditDoD(task.definitionOfDone || '');
+    setEditNotes(task.notes || '');
+    setEditEnergy(task.energyLevel || 'medium');
+    setEditMinutes(task.estimatedMinutes || 25);
+    setEditRecurrence(task.recurrence || 'none');
+    setEditImportance(task.importance || 'medium');
+  };
+
+  useEffect(() => {
+    if (editingTaskId) {
+      setTimeout(() => editTitleRef.current?.focus(), 50);
+    }
+  }, [editingTaskId]);
+
+  const closeTaskEditor = () => {
+    setEditingTaskId(null);
+  };
+
+  const saveTaskEditor = (task: Task) => {
+    createOrUpdateTask({
+      id: task.id,
+      title: editTitle.trim() || task.title,
+      projectId: task.projectId,
+      nextAction: editNextAction.trim() || undefined,
+      gtdContext: editContext,
+      definitionOfDone: editDoD.trim() || undefined,
+      notes: editNotes.trim() || undefined,
+      energyLevel: editEnergy,
+      estimatedMinutes: editMinutes,
+      recurrence: editRecurrence !== 'none' ? editRecurrence : undefined,
+      importance: editImportance,
+      status: task.status,
+      completedAt: task.completedAt,
+      nextDueDate: task.nextDueDate,
+      microSteps: task.microSteps,
+      blockers: task.blockers,
+      frictionBusterStep: task.frictionBusterStep,
+      skipCount: task.skipCount,
+      snoozedUntil: task.snoozedUntil,
+      lastSkippedReason: task.lastSkippedReason,
+      lastCompletedAt: task.lastCompletedAt,
+      createdAt: task.createdAt,
+      archivedAt: task.archivedAt
+    });
+    setEditingTaskId(null);
+  };
 
   // Undo/redo inside the description field (controlled inputs break native undo)
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
@@ -837,11 +905,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
                     {/* Task Title & Tags */}
                     <div className="truncate flex-1 min-w-0">
-                      <span className={`text-xs font-medium block truncate ${
-                        isCompleted ? 'line-through text-slate-500' : 'text-slate-100'
-                      }`}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openTaskEditor(task);
+                        }}
+                        title="Click to edit this task"
+                        className={`group/title inline-flex items-center gap-1 text-xs font-medium block truncate text-left hover:text-indigo-300 transition ${
+                          isCompleted ? 'line-through text-slate-500' : 'text-slate-100'
+                        }`}
+                      >
                         {task.title}
-                      </span>
+                        <Edit3 className="w-3 h-3 text-slate-600 group-hover/title:text-indigo-400 shrink-0 ml-1" />
+                      </button>
                       
                       <div className="flex items-center gap-2 mt-0.5">
                         {isCompleted && (
@@ -910,6 +986,167 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Inline Task Editor (opened by clicking a task title) */}
+      {editingTaskId && (() => {
+        const task = projectTasks.find(t => t.id === editingTaskId);
+        if (!task) return null;
+        return (
+          <div className="mb-8 p-5 rounded-3xl bg-slate-900 border border-indigo-500/40 shadow-2xl animate-fade-in">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-indigo-400" />
+                <span>Edit Task</span>
+              </h3>
+              <button
+                onClick={closeTaskEditor}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+              >
+                <XCircle className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Title *
+                </label>
+                <input
+                  ref={editTitleRef}
+                  type="text"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-indigo-500 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Next Action (GTD)
+                </label>
+                <input
+                  type="text"
+                  value={editNextAction}
+                  onChange={(e) => setEditNextAction(e.target.value)}
+                  placeholder="The very next physical, visible step..."
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Definition of Done
+                </label>
+                <AutoGrowTextarea
+                  value={editDoD}
+                  onChange={(e) => setEditDoD(e.target.value)}
+                  placeholder="When is this task truly finished?"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm leading-relaxed text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Notes
+                </label>
+                <AutoGrowTextarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Scraps, links, context..."
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm leading-relaxed text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Context</label>
+                  <select
+                    value={editContext}
+                    onChange={(e) => setEditContext(e.target.value as GTDContext)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="@computer">💻 @computer</option>
+                    <option value="@phone">📱 @phone</option>
+                    <option value="@errands">🚗 @errands</option>
+                    <option value="@home">🏠 @home</option>
+                    <option value="@anywhere">🌍 @anywhere</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Energy</label>
+                  <select
+                    value={editEnergy}
+                    onChange={(e) => setEditEnergy(e.target.value as EnergyLevel)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Importance</label>
+                  <select
+                    value={editImportance}
+                    onChange={(e) => setEditImportance(e.target.value as TaskImportance)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Duration</label>
+                  <select
+                    value={editMinutes}
+                    onChange={(e) => setEditMinutes(Number(e.target.value))}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value={5}>5m</option>
+                    <option value={15}>15m</option>
+                    <option value={25}>25m</option>
+                    <option value={45}>45m</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">Recurrence</label>
+                <select
+                  value={editRecurrence}
+                  onChange={(e) => setEditRecurrence(e.target.value as RecurrenceInterval)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="none">No repeat</option>
+                  <option value="daily">Daily</option>
+                  <option value="every_2_days">Every 2 days</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={closeTaskEditor}
+                  className="px-3.5 py-2 rounded-xl text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveTaskEditor(task)}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition active:scale-95 flex items-center gap-1.5"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save Changes</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 3. Add Tasks Section (Searchable Unified Input to Link or Create New Task) */}
       <div className="pt-6 border-t border-slate-900" ref={taskSearchContainerRef}>

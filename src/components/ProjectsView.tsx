@@ -21,10 +21,9 @@ import {
   Search,
   GripVertical,
   Save,
-  XCircle
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
-import { Project, Task, GTDContext, EnergyLevel, TaskImportance, RecurrenceInterval } from '../types/task';
+import { Project, Task, GTDContext, EnergyLevel, TaskImportance } from '../types/task';
 import { AutoGrowTextarea } from './AutoGrowTextarea';
 import { useTextHistory } from '../hooks/useTextHistory';
 import { CustomSelect, SelectOption } from './CustomSelect';
@@ -86,41 +85,34 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [editNotes, setEditNotes] = useState('');
   const [editEnergy, setEditEnergy] = useState<EnergyLevel>('medium');
   const [editMinutes, setEditMinutes] = useState<number>(25);
-  const [editRecurrence, setEditRecurrence] = useState<RecurrenceInterval>('none');
   const [editImportance, setEditImportance] = useState<TaskImportance>('medium');
   const editTitleRef = useRef<HTMLInputElement>(null);
 
-  // Option arrays for the inline task editor dropdowns (CustomSelect)
-  const GTD_OPTIONS: SelectOption[] = [
-    { value: '@computer', label: '💻 @computer', icon: <span>💻</span> },
-    { value: '@phone', label: '📱 @phone', icon: <span>📱</span> },
-    { value: '@errands', label: '🚗 @errands', icon: <span>🚗</span> },
-    { value: '@home', label: '🏠 @home', icon: <span>🏠</span> },
-    { value: '@anywhere', label: '🌍 @anywhere', icon: <span>🌍</span> },
-  ];
-  const ENERGY_OPTIONS: SelectOption[] = [
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-  ];
-  const IMPORTANCE_OPTIONS: SelectOption[] = [
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-  ];
-  const DURATION_OPTIONS: SelectOption[] = [
-    { value: '5', label: '5m' },
-    { value: '15', label: '15m' },
-    { value: '25', label: '25m' },
-    { value: '45', label: '45m' },
-  ];
-  const RECURRENCE_OPTIONS: SelectOption[] = [
-    { value: 'none', label: 'No repeat' },
-    { value: 'daily', label: 'Daily' },
-    { value: 'every_2_days', label: 'Every 2 days' },
-    { value: 'weekly', label: 'Weekly' },
-    { value: 'monthly', label: 'Monthly' },
-  ];
+  // Option arrays for the task editor dropdowns (CustomSelect)
+// Label is text-only; icon carries the emoji — matches the convention in TasksView
+const GTD_OPTIONS: SelectOption[] = [
+  { value: '@computer', label: '@computer', icon: <span>💻</span> },
+  { value: '@phone', label: '@phone', icon: <span>📱</span> },
+  { value: '@errands', label: '@errands', icon: <span>🚗</span> },
+  { value: '@home', label: '@home', icon: <span>🏠</span> },
+  { value: '@anywhere', label: '@anywhere', icon: <span>🌍</span> },
+];
+const ENERGY_OPTIONS: SelectOption[] = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+];
+const IMPORTANCE_OPTIONS: SelectOption[] = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+];
+const DURATION_OPTIONS: SelectOption[] = [
+  { value: '5', label: '5m' },
+  { value: '15', label: '15m' },
+  { value: '25', label: '25m' },
+  { value: '45', label: '45m' },
+];
 
   const openTaskEditor = (task: Task) => {
     setIsEditing(false);
@@ -132,7 +124,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     setEditNotes(task.notes || '');
     setEditEnergy(task.energyLevel || 'medium');
     setEditMinutes(task.estimatedMinutes || 25);
-    setEditRecurrence(task.recurrence || 'none');
     setEditImportance(task.importance || 'medium');
   };
 
@@ -157,7 +148,6 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       notes: editNotes.trim() || undefined,
       energyLevel: editEnergy,
       estimatedMinutes: editMinutes,
-      recurrence: editRecurrence !== 'none' ? editRecurrence : undefined,
       importance: editImportance,
       status: task.status,
       completedAt: task.completedAt,
@@ -1022,141 +1012,133 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         )}
       </div>
 
-      {/* Inline Task Editor (opened by clicking a task title) */}
+      {/* Task Editor Modal (centered overlay) */}
       {editingTaskId && (() => {
         const task = projectTasks.find(t => t.id === editingTaskId);
         if (!task) return null;
         return (
-          <div className="mb-8 p-5 rounded-3xl bg-slate-900 border border-indigo-500/40 shadow-2xl animate-fade-in">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Edit3 className="w-4 h-4 text-indigo-400" />
-                <span>Edit Task</span>
-              </h3>
-              <button
-                onClick={closeTaskEditor}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
-              >
-                <XCircle className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Title *
-                </label>
-                <input
-                  ref={editTitleRef}
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-indigo-500 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Next Action (GTD)
-                </label>
-                <input
-                  type="text"
-                  value={editNextAction}
-                  onChange={(e) => setEditNextAction(e.target.value)}
-                  placeholder="The very next physical, visible step..."
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Definition of Done
-                </label>
-                <AutoGrowTextarea
-                  value={editDoD}
-                  onChange={(e) => setEditDoD(e.target.value)}
-                  placeholder="When is this task truly finished?"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm leading-relaxed text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Notes
-                </label>
-                <AutoGrowTextarea
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
-                  placeholder="Scraps, links, context..."
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm leading-relaxed text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Context</label>
-                  <CustomSelect
-                    value={editContext}
-                    onChange={(val) => setEditContext(val as GTDContext)}
-                    options={GTD_OPTIONS}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Energy</label>
-                  <CustomSelect
-                    value={editEnergy}
-                    onChange={(val) => setEditEnergy(val as EnergyLevel)}
-                    options={ENERGY_OPTIONS}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Importance</label>
-                  <CustomSelect
-                    value={editImportance}
-                    onChange={(val) => setEditImportance(val as TaskImportance)}
-                    options={IMPORTANCE_OPTIONS}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-medium text-slate-400 mb-1">Duration</label>
-                  <CustomSelect
-                    value={String(editMinutes)}
-                    onChange={(val) => setEditMinutes(Number(val))}
-                    options={DURATION_OPTIONS}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-medium text-slate-400 mb-1">Recurrence</label>
-                <CustomSelect
-                  value={editRecurrence}
-                  onChange={(val) => setEditRecurrence(val as RecurrenceInterval)}
-                  options={RECURRENCE_OPTIONS}
-                  className="w-full"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+            <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl animate-fade-in">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Edit3 className="w-4 h-4 text-indigo-400" />
+                  <span>Edit Task</span>
+                </h3>
                 <button
-                  type="button"
                   onClick={closeTaskEditor}
-                  className="px-3.5 py-2 rounded-xl text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+                  className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
                 >
-                  Cancel
+                  <X className="w-5 h-5" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => saveTaskEditor(task)}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition active:scale-95 flex items-center gap-1.5"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>Save Changes</span>
-                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Title *
+                  </label>
+                  <input
+                    ref={editTitleRef}
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-indigo-500 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Next Action (GTD)
+                  </label>
+                  <input
+                    type="text"
+                    value={editNextAction}
+                    onChange={(e) => setEditNextAction(e.target.value)}
+                    placeholder="The very next physical, visible step..."
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Definition of Done
+                  </label>
+                  <AutoGrowTextarea
+                    value={editDoD}
+                    onChange={(e) => setEditDoD(e.target.value)}
+                    placeholder="When is this task truly finished?"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm leading-relaxed text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Notes
+                  </label>
+                  <AutoGrowTextarea
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                    placeholder="Scraps, links, context..."
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm leading-relaxed text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-400 mb-1">Context</label>
+                    <CustomSelect
+                      value={editContext}
+                      onChange={(val) => setEditContext(val as GTDContext)}
+                      options={GTD_OPTIONS}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-400 mb-1">Energy</label>
+                    <CustomSelect
+                      value={editEnergy}
+                      onChange={(val) => setEditEnergy(val as EnergyLevel)}
+                      options={ENERGY_OPTIONS}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-400 mb-1">Importance</label>
+                    <CustomSelect
+                      value={editImportance}
+                      onChange={(val) => setEditImportance(val as TaskImportance)}
+                      options={IMPORTANCE_OPTIONS}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-400 mb-1">Duration</label>
+                    <CustomSelect
+                      value={String(editMinutes)}
+                      onChange={(val) => setEditMinutes(Number(val))}
+                      options={DURATION_OPTIONS}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={closeTaskEditor}
+                    className="px-3.5 py-2 rounded-xl text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => saveTaskEditor(task)}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition active:scale-95 flex items-center gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save Changes</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

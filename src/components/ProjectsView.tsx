@@ -27,6 +27,7 @@ import { useTaskContext } from '../context/TaskContext';
 import { Project, Task, GTDContext, EnergyLevel, TaskImportance, RecurrenceInterval } from '../types/task';
 import { AutoGrowTextarea } from './AutoGrowTextarea';
 import { useTextHistory } from '../hooks/useTextHistory';
+import { CustomSelect, SelectOption } from './CustomSelect';
 
 interface ProjectsViewProps {
   onSelectTaskForFocus?: () => void;
@@ -88,6 +89,38 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [editRecurrence, setEditRecurrence] = useState<RecurrenceInterval>('none');
   const [editImportance, setEditImportance] = useState<TaskImportance>('medium');
   const editTitleRef = useRef<HTMLInputElement>(null);
+
+  // Option arrays for the inline task editor dropdowns (CustomSelect)
+  const GTD_OPTIONS: SelectOption[] = [
+    { value: '@computer', label: '💻 @computer', icon: <span>💻</span> },
+    { value: '@phone', label: '📱 @phone', icon: <span>📱</span> },
+    { value: '@errands', label: '🚗 @errands', icon: <span>🚗</span> },
+    { value: '@home', label: '🏠 @home', icon: <span>🏠</span> },
+    { value: '@anywhere', label: '🌍 @anywhere', icon: <span>🌍</span> },
+  ];
+  const ENERGY_OPTIONS: SelectOption[] = [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+  ];
+  const IMPORTANCE_OPTIONS: SelectOption[] = [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+  ];
+  const DURATION_OPTIONS: SelectOption[] = [
+    { value: '5', label: '5m' },
+    { value: '15', label: '15m' },
+    { value: '25', label: '25m' },
+    { value: '45', label: '45m' },
+  ];
+  const RECURRENCE_OPTIONS: SelectOption[] = [
+    { value: 'none', label: 'No repeat' },
+    { value: 'daily', label: 'Daily' },
+    { value: 'every_2_days', label: 'Every 2 days' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'monthly', label: 'Monthly' },
+  ];
 
   const openTaskEditor = (task: Task) => {
     setIsEditing(false);
@@ -1062,70 +1095,50 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-[11px] font-medium text-slate-400 mb-1">Context</label>
-                  <select
+                  <CustomSelect
                     value={editContext}
-                    onChange={(e) => setEditContext(e.target.value as GTDContext)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="@computer">💻 @computer</option>
-                    <option value="@phone">📱 @phone</option>
-                    <option value="@errands">🚗 @errands</option>
-                    <option value="@home">🏠 @home</option>
-                    <option value="@anywhere">🌍 @anywhere</option>
-                  </select>
+                    onChange={(val) => setEditContext(val as GTDContext)}
+                    options={GTD_OPTIONS}
+                    className="w-full"
+                  />
                 </div>
                 <div>
                   <label className="block text-[11px] font-medium text-slate-400 mb-1">Energy</label>
-                  <select
+                  <CustomSelect
                     value={editEnergy}
-                    onChange={(e) => setEditEnergy(e.target.value as EnergyLevel)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
+                    onChange={(val) => setEditEnergy(val as EnergyLevel)}
+                    options={ENERGY_OPTIONS}
+                    className="w-full"
+                  />
                 </div>
                 <div>
                   <label className="block text-[11px] font-medium text-slate-400 mb-1">Importance</label>
-                  <select
+                  <CustomSelect
                     value={editImportance}
-                    onChange={(e) => setEditImportance(e.target.value as TaskImportance)}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
+                    onChange={(val) => setEditImportance(val as TaskImportance)}
+                    options={IMPORTANCE_OPTIONS}
+                    className="w-full"
+                  />
                 </div>
                 <div>
                   <label className="block text-[11px] font-medium text-slate-400 mb-1">Duration</label>
-                  <select
-                    value={editMinutes}
-                    onChange={(e) => setEditMinutes(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
-                  >
-                    <option value={5}>5m</option>
-                    <option value={15}>15m</option>
-                    <option value={25}>25m</option>
-                    <option value={45}>45m</option>
-                  </select>
+                  <CustomSelect
+                    value={String(editMinutes)}
+                    onChange={(val) => setEditMinutes(Number(val))}
+                    options={DURATION_OPTIONS}
+                    className="w-full"
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="block text-[11px] font-medium text-slate-400 mb-1">Recurrence</label>
-                <select
+                <CustomSelect
                   value={editRecurrence}
-                  onChange={(e) => setEditRecurrence(e.target.value as RecurrenceInterval)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="none">No repeat</option>
-                  <option value="daily">Daily</option>
-                  <option value="every_2_days">Every 2 days</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
+                  onChange={(val) => setEditRecurrence(val as RecurrenceInterval)}
+                  options={RECURRENCE_OPTIONS}
+                  className="w-full"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">

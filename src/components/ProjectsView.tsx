@@ -98,20 +98,20 @@ const GTD_OPTIONS: SelectOption[] = [
   { value: '@anywhere', label: '@anywhere', icon: <span>🌍</span> },
 ];
 const ENERGY_OPTIONS: SelectOption[] = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
+  { value: 'low', label: 'Low', icon: <span>🌱</span> },
+  { value: 'medium', label: 'Medium', icon: <span>⚡</span> },
+  { value: 'high', label: 'High', icon: <span>🔥</span> },
 ];
 const IMPORTANCE_OPTIONS: SelectOption[] = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
+  { value: 'low', label: 'Low', icon: <span>🌱</span> },
+  { value: 'medium', label: 'Medium', icon: <span>⚡</span> },
+  { value: 'high', label: 'High', icon: <span>🔥</span> },
 ];
 const DURATION_OPTIONS: SelectOption[] = [
-  { value: '5', label: '5m' },
-  { value: '15', label: '15m' },
-  { value: '25', label: '25m' },
-  { value: '45', label: '45m' },
+  { value: '5', label: '5m', icon: <span>⏱️</span> },
+  { value: '15', label: '15m', icon: <span>⏱️</span> },
+  { value: '25', label: '25m', icon: <span>⏱️</span> },
+  { value: '45', label: '45m', icon: <span>⏱️</span> },
 ];
 
   const openTaskEditor = (task: Task) => {
@@ -205,6 +205,18 @@ const DURATION_OPTIONS: SelectOption[] = [
       setSelectedProjectId(null);
     }
   }, [projects, selectedProjectId]);
+
+  // Lock body scroll when any modal is open
+  useEffect(() => {
+    if (editingTaskId || confirmDialog) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [editingTaskId, confirmDialog]);
 
   // Focus title input when opening project form
   useEffect(() => {
@@ -1016,9 +1028,9 @@ const DURATION_OPTIONS: SelectOption[] = [
       {editingTaskId && (() => {
         const task = projectTasks.find(t => t.id === editingTaskId);
         if (!task) return null;
-        return (
+        return createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-            <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl animate-fade-in">
+            <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl animate-fade-in relative">
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <Edit3 className="w-4 h-4 text-indigo-400" />
@@ -1026,7 +1038,7 @@ const DURATION_OPTIONS: SelectOption[] = [
                 </h3>
                 <button
                   onClick={closeTaskEditor}
-                  className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1141,7 +1153,8 @@ const DURATION_OPTIONS: SelectOption[] = [
                 </div>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
 

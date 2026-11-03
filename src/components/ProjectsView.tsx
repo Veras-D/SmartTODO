@@ -90,6 +90,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   const editTitleRef = useRef<HTMLInputElement>(null);
 
   const openTaskEditor = (task: Task) => {
+    setIsEditing(false);
     setEditingTaskId(task.id);
     setEditTitle(task.title);
     setEditNextAction(task.nextAction || '');
@@ -253,6 +254,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
 
   const startEditing = (project: Project, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
+    setEditingTaskId(null);
     setFormTitle(project.title);
     setFormDescription(project.description || '');
     descriptionHistory.reset(project.description || '');
